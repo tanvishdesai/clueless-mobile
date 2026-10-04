@@ -1,25 +1,45 @@
 {
   "expo": {
-    "name": "clueless",
+    "name": "Clueless",
     "slug": "clueless",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tanvishdesai.clueless"
     },
     "android": {
+      "package": "com.tanvishdesai.clueless",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Clueless uses the camera to photograph your clothes."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "8406cfd8-f5b3-4acd-b647-dde6c191d56e"
+      }
+    },
+    "owner": "tanvishdesai"
   }
 }
