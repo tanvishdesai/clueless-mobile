@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useData } from "../lib/data";
 import { go } from "../lib/route";
-import { isTagged, type Item, type Tagged } from "../lib/types";
+import { firstName, isTagged, possessive, type Item, type Tagged } from "../lib/types";
 import { CATEGORY_LABEL, HANGS, fileNumbers, groupByCategory, matchesQuery, sortItems, type Sort } from "../lib/closet";
 import { colorSortKey } from "../lib/color";
 import { Polaroid, tiltFor } from "../components/Polaroid";
@@ -10,7 +10,8 @@ import hanger from "../assets/hanger.svg";
 type View = "rack" | "catalogue";
 
 export function Closet() {
-  const { items } = useData();
+  const { items, me } = useData();
+  const first = firstName(me.name);
   const [cat, setCat] = useState("all");
   const [sort, setSort] = useState<Sort>("colour");
   const [view, setView] = useState<View>("rack");
@@ -40,8 +41,8 @@ export function Closet() {
     <div className="closet">
       <header className="closet-head">
         <div>
-          <p className="stretch kicker">Everything you own · colour-coordinated</p>
-          <h2 className="closet-title">The Closet</h2>
+          <p className="stretch kicker">{greeting()}, {first} · everything you own, colour-coordinated</p>
+          <h2 className="closet-title">{possessive(first)} Closet</h2>
         </div>
         <ClosetStrip items={tagged} />
         <dl className="closet-stats mono">
@@ -187,4 +188,9 @@ function Untagged({ items }: { items: Item[] }) {
       </div>
     </section>
   );
+}
+
+function greeting() {
+  const h = new Date().getHours();
+  return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
 }

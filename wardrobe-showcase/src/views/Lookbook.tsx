@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useData, useItemIndex } from "../lib/data";
 import { go, useRoute } from "../lib/route";
-import { isTagged, type Change, type Item, type Look, type LookRequest, type Piece, type Tagged } from "../lib/types";
+import { firstName, isTagged, possessive, type Change, type Item, type Look, type LookRequest, type Piece, type Tagged } from "../lib/types";
 import { applyChange, isEmpty as isEmptyChange, NO_CHANGE, samePieces } from "../lib/outfit";
 import { FittingRoom, type Picking } from "./Fitting";
 import { judge } from "../lib/match";
@@ -28,12 +28,13 @@ const COVER_BG = ["var(--yellow)", "var(--pink)", "var(--blue)", "var(--paper-2)
 function Archive({ looks }: { looks: LookRequest[] }) {
   const [saved, setSaved] = useState(false);
   const index = useItemIndex();
+  const { me } = useData();
   const shown = saved ? looks.filter((l) => l.favorite) : looks;
   return (
     <div className="archive">
       <header className="closet-head">
         <div>
-          <p className="stretch kicker">Every look your stylist ever put together</p>
+          <p className="stretch kicker">Every look Cher ever put together for {firstName(me.name) === "Cher" ? "you" : firstName(me.name)}</p>
           <h2 className="closet-title">The Lookbook</h2>
         </div>
         <div className="toolbar-right">
@@ -168,7 +169,7 @@ function Failed({ req }: { req: LookRequest }) {
 
 function Magazine({ req }: { req: LookRequest }) {
   const index = useItemIndex();
-  const { setFavorite, remove, request, notes } = useData();
+  const { setFavorite, remove, request, notes, me } = useData();
   const { query } = useRoute();
   const book = req.result!;
   const n = Math.min(Math.max(0, Number(query.get("look") ?? 0) || 0), book.looks.length - 1);
@@ -208,7 +209,7 @@ function Magazine({ req }: { req: LookRequest }) {
 
       <div className="paper">
         <header className="masthead">
-          <span className="stretch">Closet Computer</span>
+          <span className="stretch">{possessive(firstName(req.by ?? me.name))} Closet Computer</span>
           <span className="mast-mid mono">LOOK {String(n + 1).padStart(2, "0")} / {String(book.looks.length).padStart(2, "0")}</span>
           <span className="stretch">{new Date(req._creationTime).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}</span>
         </header>

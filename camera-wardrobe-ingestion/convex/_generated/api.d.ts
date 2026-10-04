@@ -8,9 +8,13 @@
  * @module
  */
 
+import type * as access from "../access.js";
+import type * as auth from "../auth.js";
+import type * as http from "../http.js";
 import type * as items from "../items.js";
 import type * as looks from "../looks.js";
 import type * as notes from "../notes.js";
+import type * as users from "../users.js";
 
 import type {
   ApiFromModules,
@@ -19,9 +23,13 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  access: typeof access;
+  auth: typeof auth;
+  http: typeof http;
   items: typeof items;
   looks: typeof looks;
   notes: typeof notes;
+  users: typeof users;
 }>;
 
 /**

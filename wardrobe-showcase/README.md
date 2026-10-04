@@ -14,7 +14,7 @@ as a teen-magazine spread.
 
 ```sh
 npm install
-cp .env.example .env.local   # VITE_CONVEX_URL + CLAUDE_CODE_OAUTH_TOKEN
+cp .env.example .env.local   # VITE_CONVEX_URL, CLAUDE_CODE_OAUTH_TOKEN, CLOSET_KEY
 npm run dev                  # site on :5173 and the stylist worker, together
 ```
 
@@ -37,6 +37,22 @@ stylist. Any URL with `?demo` does the same.
 | `npm run demo` | demo closet, no backend |
 | `npm run build` | static site in `dist/` (deploy anywhere; set `VITE_CONVEX_URL`) |
 | `node worker/check.mjs` | offline checks for the stylist's prompt plumbing |
+
+## Signing in
+
+The site opens on a "Welcome to Closet Computer" window on the same desktop:
+sign in, or create the closet's account (username, email, password). Who's
+allowed in, and the one-time setup, are in the root README under **Accounts and
+access**. In short, the backend checks every call, so the site's sign-in screen
+is the welcome mat, not the lock.
+
+Your username runs through the product: the closet greets you and becomes
+*Tanvish's Closet*, Ask Cher asks "Where are we going, Tanvish?", the lookbook's
+masthead is yours, Dress Me's terminal shows you logged in, Cher says hi in the
+fitting room, and the stylist is told your name so her lookbooks and notes can
+use it, the way a friend would (sparingly). Log out from the menu bar.
+
+Demo mode skips all of this and signs you in as Cher.
 
 ## How a look gets made
 
@@ -95,6 +111,7 @@ Sources: Amy Heckerling, Mona May, Steven Jordan and Amy Wells in NYLON's
 |---|---|
 | `worker/stylist.mjs` | the Opus 5.5 calls (lookbooks and fitting-room replies), queue loop, heartbeat |
 | `worker/prompt.mjs` | system prompts, catalogue, schemas, ref → id mapping |
+| `src/views/Gate.tsx` | sign in / create the account, before anything else renders |
 | `src/lib/data.tsx` | live (Convex) and demo data providers |
 | `src/lib/match.ts` | the MATCH / MIS-MATCH checker |
 | `src/views/` | Closet, ItemFile, DressMe, AskCher, Lookbook, Fitting |
@@ -104,5 +121,5 @@ Sources: Amy Heckerling, Mona May, Steven Jordan and Amy Wells in NYLON's
 
 ## Not built
 
-- Auth. Like the camera app, the Convex functions are open to anyone with the deployment URL. Fine for a personal closet; add Convex auth before sharing the link.
+- Password reset. There's no email provider wired up; if you forget your password, delete your row in the `users` and `authAccounts` tables from the Convex dashboard and register again.
 - Showing the stylist the photos. It works from the tags (which include hexes); adding the `Read` tool and the images would help with texture and fit at a few times the latency.

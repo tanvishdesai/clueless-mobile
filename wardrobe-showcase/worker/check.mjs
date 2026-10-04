@@ -28,10 +28,12 @@ const refs = [...cat.refToId.keys()];
 const s = schema(refs);
 assert.deepEqual(s.properties.looks.items.properties.pieces.items.properties.ref.enum, refs);
 
-const req = { occasion: "picnic", constraints: "", anchorIds: ["id_tee"] };
+const req = { occasion: "picnic", constraints: "", anchorIds: ["id_tee"], by: "Tanvish" };
 const text = brief(req, cat);
 assert.match(text, /MUST INCLUDE IN EVERY LOOK\nI0\d/);
 assert.match(text, /\(none given\)/);
+assert.match(text, /You're dressing Tanvish\./);
+assert.doesNotMatch(brief({ occasion: "x", constraints: "" }, cat), /dressing/, "no name, no line");
 
 const ref = (id) => cat.idToRef.get(id);
 const out = resolve({
@@ -57,7 +59,7 @@ assert.throws(() => resolve({ looks: [] }, cat), /no wearable look/);
 
 // ── Fitting-room notes ──
 const request = {
-  occasion: "picnic", constraints: "no black",
+  occasion: "picnic", constraints: "no black", by: "Tanvish",
   result: { looks: [{ title: "Sunday Best", why: "w", pieces: [
     { id: "id_tee", role: "top", note: "tucked" }, { id: "id_jeans", role: "bottom", note: "rolled" },
   ] }] },
@@ -71,6 +73,7 @@ const thread = [
 ];
 const nb = noteBrief({ note: { lookIndex: 0 }, request, thread }, items, cat);
 assert.match(nb, /THE LOOK YOU PUT TOGETHER: "Sunday Best"/);
+assert.match(nb, /You're writing to Tanvish\./);
 assert.match(nb, /THEM: jacket\?\n {2}tried: add I0\d \(white sneakers\)/);
 assert.match(nb, /YOU \(no\): too much/);
 assert.doesNotMatch(nb, /YOU \(undefined\)/, "failed replies stay out of the history");

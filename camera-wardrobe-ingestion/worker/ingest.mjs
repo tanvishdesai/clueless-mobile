@@ -21,6 +21,8 @@ import { query } from "@anthropic-ai/claude-agent-sdk";
 const CONVEX_URL = process.env.EXPO_PUBLIC_CONVEX_URL;
 const TOKEN = process.env.CLAUDE_CODE_OAUTH_TOKEN;
 const WATCH = process.argv.includes("--watch");
+// The backend's closet key (see convex/access.ts). Optional until CLOSET_KEY is set on the deployment.
+const KEY = process.env.CLOSET_KEY || undefined;
 
 if (!CONVEX_URL) throw new Error("EXPO_PUBLIC_CONVEX_URL missing (expected in .env.local)");
 if (!TOKEN) throw new Error("CLAUDE_CODE_OAUTH_TOKEN missing — add it to .env.local");
@@ -188,21 +190,21 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function drain() {
   let worked = 0;
   for (;;) {
-    const items = await convex.query(anyApi.items.pending, {});
+    const items = await convex.query(anyApi.items.pending, { key: KEY });
     if (!items.length) return worked;
 
     for (const item of items) {
       // Re-read each time so the vocabulary from item N primes item N+1.
-      const vocab = await convex.query(anyApi.items.vocab, {});
+      const vocab = await convex.query(anyApi.items.vocab, { key: KEY });
       const t0 = Date.now();
       try {
         const attrs = await classify(item, vocab);
-        await convex.mutation(anyApi.items.saveTags, { id: item._id, attrs });
+        await convex.mutation(anyApi.items.saveTags, { id: item._id, attrs, key: KEY });
         console.log(`✓ ${attrs.name}  (${attrs.primaryHex} ${attrs.category}/${attrs.subtype})  ${Date.now() - t0}ms`);
       } catch (e) {
         const msg = String(e?.message ?? e);
         console.error(`✗ ${item._id}: ${msg}`);
-        await convex.mutation(anyApi.items.saveTags, { id: item._id, error: msg });
+        await convex.mutation(anyApi.items.saveTags, { id: item._id, error: msg, key: KEY });
       }
       worked++;
     }

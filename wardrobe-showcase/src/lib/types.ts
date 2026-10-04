@@ -63,6 +63,7 @@ export type LookRequest = {
   _creationTime: number;
   occasion: string;
   constraints: string;
+  by?: string;
   anchorIds?: string[];
   status: "pending" | "styling" | "done" | "error";
   error?: string;
@@ -100,3 +101,10 @@ export type Note = {
   proposal?: Proposal;
   error?: string;
 };
+
+/** The signed-in person. `member` is false for an account that isn't allowed into this closet. */
+export type Me = { name: string; email: string; member: boolean };
+
+/** "Tanvish’s", "James’" */
+export const possessive = (name: string) => `${name}’${/s$/i.test(name) ? "" : "s"}`;
+export const firstName = (name: string) => name.trim().split(/\s+/)[0] || name;

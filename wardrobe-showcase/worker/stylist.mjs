@@ -22,14 +22,17 @@ const EFFORT = "medium";
 
 const CONVEX_URL = process.env.VITE_CONVEX_URL ?? process.env.EXPO_PUBLIC_CONVEX_URL;
 const TOKEN = process.env.CLAUDE_CODE_OAUTH_TOKEN;
+// The backend only lets the stylist in with the closet key (see convex/access.ts).
+const KEY = process.env.CLOSET_KEY;
 const WATCH = process.argv.includes("--watch");
 
-if (!CONVEX_URL || !TOKEN) {
+if (!CONVEX_URL || !TOKEN || !KEY) {
   console.error(
     [
       "The stylist needs two things in wardrobe-showcase/.env.local:",
       !CONVEX_URL && "  VITE_CONVEX_URL=https://<your-deployment>.convex.cloud",
       !TOKEN && "  CLAUDE_CODE_OAUTH_TOKEN=<from `claude setup-token`>",
+      !KEY && "  CLOSET_KEY=<the same value as CLOSET_KEY on the Convex deployment>",
       "(The website still runs without it - try `npm run demo`.)",
     ].filter(Boolean).join("\n"),
   );
@@ -39,7 +42,7 @@ if (!CONVEX_URL || !TOKEN) {
 const convex = new ConvexHttpClient(CONVEX_URL);
 
 async function style(req) {
-  const items = await convex.query(anyApi.items.list, {});
+  const items = await convex.query(anyApi.items.list, { key: KEY });
   const cat = catalogue(items);
   if (!cat.refToId.size) throw new Error("the closet is empty - ingest some clothes first");
 
@@ -69,9 +72,9 @@ async function style(req) {
 
 /** One reply in the fitting room. Same harness, model and effort as a lookbook. */
 async function reply(noteId) {
-  const ctx = await convex.query(anyApi.notes.context, { id: noteId });
+  const ctx = await convex.query(anyApi.notes.context, { id: noteId, key: KEY });
   if (!ctx?.request?.result?.looks[ctx.note.lookIndex]) throw new Error("that look no longer exists");
-  const items = await convex.query(anyApi.items.list, {});
+  const items = await convex.query(anyApi.items.list, { key: KEY });
   const cat = catalogue(items);
 
   let output;
@@ -103,27 +106,27 @@ function parseLoose(text) {
 }
 
 let busy = false;
-const beat = () => convex.mutation(anyApi.looks.heartbeat, { model: MODEL, busy }).catch(() => {});
+const beat = () => convex.mutation(anyApi.looks.heartbeat, { model: MODEL, busy, key: KEY }).catch(() => {});
 
 /** Notes first: someone is standing in the fitting room waiting for an answer. */
 async function drainNotes() {
   let worked = 0;
   for (;;) {
-    const queue = await convex.query(anyApi.notes.pending, {});
+    const queue = await convex.query(anyApi.notes.pending, { key: KEY });
     if (!queue.length) return worked;
     for (const note of queue) {
-      if (!(await convex.mutation(anyApi.notes.claim, { id: note._id }))) continue;
+      if (!(await convex.mutation(anyApi.notes.claim, { id: note._id, key: KEY }))) continue;
       busy = true;
       void beat();
       const t0 = Date.now();
       try {
         const r = await reply(note._id);
-        await convex.mutation(anyApi.notes.finish, { id: note._id, ...r });
+        await convex.mutation(anyApi.notes.finish, { id: note._id, ...r, key: KEY });
         console.log(`✎ ${r.verdict}: ${r.text.slice(0, 80)}  (${((Date.now() - t0) / 1000).toFixed(0)}s)`);
       } catch (e) {
         const msg = String(e?.message ?? e);
         console.error(`✗ note ${note._id}: ${msg}`);
-        await convex.mutation(anyApi.notes.finish, { id: note._id, error: msg });
+        await convex.mutation(anyApi.notes.finish, { id: note._id, error: msg, key: KEY });
       } finally {
         busy = false;
         void beat();
@@ -137,22 +140,22 @@ async function drain() {
   let worked = 0;
   for (;;) {
     worked += await drainNotes();
-    const queue = await convex.query(anyApi.looks.pending, {});
+    const queue = await convex.query(anyApi.looks.pending, { key: KEY });
     if (!queue.length) return worked;
     for (const req of queue) {
-      if (!(await convex.mutation(anyApi.looks.claim, { id: req._id, model: MODEL }))) continue;
+      if (!(await convex.mutation(anyApi.looks.claim, { id: req._id, model: MODEL, key: KEY }))) continue;
       busy = true;
       void beat();
       const t0 = Date.now();
       console.log(`… styling "${req.occasion.slice(0, 70)}"`);
       try {
         const result = await style(req);
-        await convex.mutation(anyApi.looks.finish, { id: req._id, result });
+        await convex.mutation(anyApi.looks.finish, { id: req._id, result, key: KEY });
         console.log(`✓ ${result.looks.map((l) => l.title).join("  ·  ")}  (${((Date.now() - t0) / 1000).toFixed(0)}s)`);
       } catch (e) {
         const msg = String(e?.message ?? e);
         console.error(`✗ ${req._id}: ${msg}`);
-        await convex.mutation(anyApi.looks.finish, { id: req._id, error: msg });
+        await convex.mutation(anyApi.looks.finish, { id: req._id, error: msg, key: KEY });
       } finally {
         busy = false;
         void beat();

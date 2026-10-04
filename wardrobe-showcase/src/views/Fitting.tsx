@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useData } from "../lib/data";
-import { isTagged, type Change, type Item, type Look, type LookRequest, type Note, type Piece } from "../lib/types";
+import { firstName, isTagged, type Change, type Item, type Look, type LookRequest, type Note, type Piece } from "../lib/types";
 import { addTo, askAbout, isEmpty, NO_CHANGE, samePieces } from "../lib/outfit";
 import { CATEGORY_LABEL, CATEGORY_ORDER } from "../lib/closet";
 import { colorSortKey } from "../lib/color";
@@ -43,7 +43,7 @@ type Props = {
 
 export function FittingRoom(props: Props) {
   const { req, lookIndex, look, base, worn, preview, change, setChange, onWear, onClose, picking, setPicking, index } = props;
-  const { notes, sendNote, stylist, mode } = useData();
+  const { notes, sendNote, stylist, mode, me } = useData();
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -105,7 +105,7 @@ export function FittingRoom(props: Props) {
 
       <div className="thread" ref={scroller} aria-live="polite">
         <CherCard>
-          <p>Try something on, or just ask. Click any piece in the collage to swap it out or lose it, or pull one off the rack. I'll tell you if it works.</p>
+          <p>Hi {firstName(me.name)}! Try something on, or just ask. Click any piece in the collage to swap it out or lose it, or pull one off the rack. I'll tell you if it works.</p>
           {thread.length === 0 && (
             <div className="starters">
               {STARTERS.map((s) => <button key={s} type="button" className="chip" onClick={() => setText(s)}>{s}</button>)}

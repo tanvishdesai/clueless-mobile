@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "./api";
-import { isTagged, type Change, type Item, type Look, type LookRequest, type Note, type Piece } from "./types";
+import { isTagged, type Change, type Item, type Look, type LookRequest, type Me, type Note, type Piece } from "./types";
 import { DEMO_ITEMS, DEMO_LOOKS } from "../demo/closet";
 import { demoNote, demoStyle } from "../demo/stylist";
 
@@ -12,6 +12,9 @@ export type NoteArgs = { lookId: string; lookIndex: number; text: string; change
 
 type Data = {
   mode: "live" | "demo";
+  /** Who's signed in; the username personalises the whole site. */
+  me: Me;
+  signOut: () => Promise<void>;
   items: Item[] | undefined;
   looks: LookRequest[] | undefined;
   stylist: Stylist | undefined;
@@ -44,7 +47,7 @@ function useNow(every = 5000) {
   return now;
 }
 
-export function LiveData({ children }: { children: ReactNode }) {
+export function LiveData({ me, signOut, children }: { me: Me; signOut: () => Promise<void>; children: ReactNode }) {
   const items = useQuery(api.items.list, {});
   const looks = useQuery(api.looks.list, {});
   const beat = useQuery(api.looks.stylist, {});
@@ -67,6 +70,8 @@ export function LiveData({ children }: { children: ReactNode }) {
 
   const value = useMemo<Data>(() => ({
     mode: "live",
+    me,
+    signOut,
     items,
     looks,
     stylist,
@@ -78,10 +83,12 @@ export function LiveData({ children }: { children: ReactNode }) {
     sendNote: (args) => sendNote(args),
     retryNote: (id) => retryNote({ id }),
     keepLook: (id, look) => addLook({ id, look }),
-  }), [items, looks, stylist, request, retry, setFavorite, remove, notes, sendNote, retryNote, addLook]);
+  }), [me, signOut, items, looks, stylist, request, retry, setFavorite, remove, notes, sendNote, retryNote, addLook]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
+
+const DEMO_ME: Me = { name: "Cher", email: "cher@bronsonalcott.edu", member: true };
 
 /** Cher's closet and a stand-in stylist, entirely in memory. */
 export function DemoData({ children }: { children: ReactNode }) {
@@ -130,6 +137,8 @@ export function DemoData({ children }: { children: ReactNode }) {
 
   const value = useMemo<Data>(() => ({
     mode: "demo",
+    me: DEMO_ME,
+    signOut: async () => {},
     items: DEMO_ITEMS,
     looks,
     stylist: { online: true, busy, model: "demo stylist" },
@@ -137,6 +146,7 @@ export function DemoData({ children }: { children: ReactNode }) {
       const req: LookRequest = {
         _id: `demo_${Date.now().toString(36)}`,
         _creationTime: Date.now(),
+        by: DEMO_ME.name,
         occasion: occasion.trim(),
         constraints: constraints.trim(),
         anchorIds,

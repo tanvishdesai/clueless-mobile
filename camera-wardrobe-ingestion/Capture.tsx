@@ -7,6 +7,7 @@ import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { File, UploadType } from "expo-file-system";
 import { useConvex } from "convex/react";
 import { api } from "./convex/_generated/api";
+import { closetKey } from "./convexClient";
 
 /** Shrink before upload: ~150KB instead of ~4MB, and far fewer image tokens. */
 async function shrink(uri: string) {
@@ -127,10 +128,11 @@ export default function Capture() {
       try {
         const [frontId, backId] = await Promise.all(
           [frontUri, backUri].map(async (uri) =>
-            uploadOne(uri, await convex.mutation(api.items.generateUploadUrl, {})),
+            uploadOne(uri, await convex.mutation(api.items.generateUploadUrl, { key: closetKey })),
           ),
         );
         await convex.mutation(api.items.create, {
+          key: closetKey,
           frontId: frontId as any,
           backId: backId as any,
         });

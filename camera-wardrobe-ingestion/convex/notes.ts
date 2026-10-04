@@ -1,5 +1,8 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { requireKey, requireMember } from "./access";
+
+const key = v.optional(v.string());
 
 /**
  * The fitting room (../wardrobe-showcase): a conversation about one look.
@@ -17,7 +20,10 @@ const change = v.object({
 const outfit = v.array(v.object({ id: v.id("items"), role: v.string() }));
 
 /** Recent notes across every lookbook; a personal closet's worth is small. */
-export const list = query(async (ctx) => ctx.db.query("notes").order("desc").take(400));
+export const list = query(async (ctx) => {
+  await requireMember(ctx);
+  return ctx.db.query("notes").order("desc").take(400);
+});
 
 export const send = mutation({
   args: {
@@ -28,6 +34,7 @@ export const send = mutation({
     outfit: v.optional(outfit),
   },
   handler: async (ctx, { lookId, lookIndex, text, change, outfit }) => {
+    await requireMember(ctx);
     const look = await ctx.db.get(lookId);
     if (!look?.result?.looks[lookIndex]) throw new Error("that look doesn't exist");
     const t = text.trim().slice(0, 1200);
@@ -43,14 +50,19 @@ export const send = mutation({
 });
 
 /** The worker's queue: replies nobody has written yet, oldest first. */
-export const pending = query(async (ctx) =>
-  ctx.db.query("notes").withIndex("by_status", (q) => q.eq("status", "pending")).take(10),
-);
+export const pending = query({
+  args: { key },
+  handler: async (ctx, { key }) => {
+    requireKey(key);
+    return ctx.db.query("notes").withIndex("by_status", (q) => q.eq("status", "pending")).take(10);
+  },
+});
 
 /** Everything the worker needs to write one reply. */
 export const context = query({
-  args: { id: v.id("notes") },
-  handler: async (ctx, { id }) => {
+  args: { id: v.id("notes"), key },
+  handler: async (ctx, { id, key }) => {
+    requireKey(key);
     const note = await ctx.db.get(id);
     if (!note) return null;
     const request = await ctx.db.get(note.lookId);
@@ -65,8 +77,9 @@ export const context = query({
 });
 
 export const claim = mutation({
-  args: { id: v.id("notes") },
-  handler: async (ctx, { id }) => {
+  args: { id: v.id("notes"), key },
+  handler: async (ctx, { id, key }) => {
+    requireKey(key);
     const note = await ctx.db.get(id);
     if (!note || note.status !== "pending") return false;
     await ctx.db.patch(id, { status: "writing" });
@@ -81,8 +94,10 @@ export const finish = mutation({
     verdict: v.optional(v.string()),
     proposal: v.optional(v.any()),
     error: v.optional(v.string()),
+    key,
   },
-  handler: async (ctx, { id, text, verdict, proposal, error }) => {
+  handler: async (ctx, { id, text, verdict, proposal, error, key }) => {
+    requireKey(key);
     if (error || !text) {
       return ctx.db.patch(id, { status: "error", error: (error ?? "no reply came back").slice(0, 500) });
     }
@@ -92,5 +107,8 @@ export const finish = mutation({
 
 export const retry = mutation({
   args: { id: v.id("notes") },
-  handler: async (ctx, { id }) => ctx.db.patch(id, { status: "pending", error: undefined }),
+  handler: async (ctx, { id }) => {
+    await requireMember(ctx);
+    await ctx.db.patch(id, { status: "pending", error: undefined });
+  },
 });

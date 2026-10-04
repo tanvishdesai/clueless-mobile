@@ -1,4 +1,5 @@
 import { defineSchema, defineTable } from "convex/server";
+import { authTables } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 
 // Closed sets: a shirt is a shirt. These never need discovering, so they're
@@ -78,6 +79,9 @@ const lookbook = v.object({
 });
 
 export default defineSchema({
+  // Website accounts (Convex Auth): users, sessions, password accounts.
+  ...authTables,
+
   items: defineTable({
     frontId: v.id("_storage"),
     backId: v.id("_storage"),
@@ -104,6 +108,8 @@ export default defineSchema({
   looks: defineTable({
     occasion: v.string(),
     constraints: v.string(),
+    // Username of whoever asked, so the stylist can address them by name.
+    by: v.optional(v.string()),
     // Pieces every look must be built around ("build a look around this").
     anchorIds: v.optional(v.array(v.id("items"))),
     status: v.union(

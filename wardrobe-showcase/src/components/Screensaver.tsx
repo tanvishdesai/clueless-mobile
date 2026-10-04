@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Logo } from "./Logo";
+import { firstName, possessive } from "../lib/types";
 import hanger from "../assets/hanger.svg";
 
 // "[The art department] came up with the computer's screensaver with the moving
@@ -12,7 +13,7 @@ const FLOCK = Array.from({ length: 14 }, (_, i) => ({
   scale: 0.6 + ((i * 13) % 10) / 14,
 }));
 
-export function Screensaver({ onWake }: { onWake: () => void }) {
+export function Screensaver({ onWake, name }: { onWake: () => void; name: string }) {
   useEffect(() => {
     const armed = Date.now() + 700; // ignore the click/move that started it
     const wake = () => Date.now() > armed && onWake();
@@ -32,7 +33,7 @@ export function Screensaver({ onWake }: { onWake: () => void }) {
           style={{ top: `${f.top}%`, animationDelay: `${f.delay}s`, animationDuration: `${f.dur}s`, ["--s" as string]: f.scale }}
         />
       ))}
-      <div className="saver-logo"><Logo size={88} sub="closet computer" /></div>
+      <div className="saver-logo"><Logo size={88} sub={`${possessive(firstName(name))} closet computer`} /></div>
     </div>
   );
 }

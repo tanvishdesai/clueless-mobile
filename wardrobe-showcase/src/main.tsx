@@ -1,7 +1,9 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { ConvexProvider, ConvexReactClient } from "convex/react";
-import { DemoData, LiveData } from "./lib/data";
+import { ConvexReactClient } from "convex/react";
+import { ConvexAuthProvider } from "@convex-dev/auth/react";
+import { DemoData } from "./lib/data";
+import { Gate } from "./views/Gate";
 import App from "./App";
 
 import "@fontsource/kavoon/400.css";
@@ -25,6 +27,7 @@ import "./styles/dress.css";
 import "./styles/ask.css";
 import "./styles/lookbook.css";
 import "./styles/fitting.css";
+import "./styles/auth.css";
 
 const url = import.meta.env.VITE_CONVEX_URL as string | undefined;
 // Demo when asked for (npm run demo, ?demo) or when there's no deployment to talk to.
@@ -42,9 +45,9 @@ if (demo) {
   const convex = new ConvexReactClient(url!);
   root.render(
     <StrictMode>
-      <ConvexProvider client={convex}>
-        <LiveData><App /></LiveData>
-      </ConvexProvider>
+      <ConvexAuthProvider client={convex}>
+        <Gate />
+      </ConvexAuthProvider>
     </StrictMode>,
   );
 }

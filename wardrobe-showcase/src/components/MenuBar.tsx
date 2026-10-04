@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useData } from "../lib/data";
 import { APPS, go, type App } from "../lib/route";
-import { isTagged } from "../lib/types";
+import { firstName, isTagged } from "../lib/types";
 import { APP_LABEL } from "./Icons";
 import { LogoMark } from "./Logo";
 
@@ -21,19 +21,24 @@ type Props = {
 };
 
 export function MenuBar({ app, wallpaper, setWallpaper, onSaver }: Props) {
-  const { items, stylist, mode } = useData();
+  const { items, stylist, mode, me, signOut } = useData();
   const [open, setOpen] = useState(false);
+  const [userOpen, setUserOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const userRef = useRef<HTMLDivElement>(null);
   const clock = useClock();
 
   useEffect(() => {
-    if (!open) return;
-    const off = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    if (!open && !userOpen) return;
+    const off = (e: PointerEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+      if (!userRef.current?.contains(e.target as Node)) setUserOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") { setOpen(false); setUserOpen(false); } };
     window.addEventListener("pointerdown", off);
     window.addEventListener("keydown", esc);
     return () => { window.removeEventListener("pointerdown", off); window.removeEventListener("keydown", esc); };
-  }, [open]);
+  }, [open, userOpen]);
 
   const count = (items ?? []).filter(isTagged).length;
   const state = !stylist ? "…" : stylist.busy ? "Styling" : stylist.online ? "Stylist on call" : "Stylist off duty";
@@ -56,6 +61,12 @@ export function MenuBar({ app, wallpaper, setWallpaper, onSaver }: Props) {
             ))}
             <hr />
             <button role="menuitem" onClick={() => { setOpen(false); onSaver(); }}>Screensaver <span>⌥Z</span></button>
+            {mode === "live" && (
+              <>
+                <hr />
+                <button role="menuitem" onClick={() => { setOpen(false); void signOut(); }}>Log out {firstName(me.name)}…</button>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -69,6 +80,24 @@ export function MenuBar({ app, wallpaper, setWallpaper, onSaver }: Props) {
         <span className={`dot ${stylist?.busy ? "busy" : stylist?.online ? "on" : ""}`} aria-hidden />
         <span className="label">{state}</span>
       </span>
+      <div ref={userRef} className="user-menu">
+        <button className="user-btn" onClick={() => setUserOpen(!userOpen)} aria-expanded={userOpen} aria-haspopup="menu">
+          <span className="user-mark" aria-hidden>{firstName(me.name).charAt(0).toUpperCase()}</span>
+          <span className="user-name">{firstName(me.name)}</span>
+        </button>
+        {userOpen && (
+          <div className="menu-pop right" role="menu">
+            <div className="menu-who">
+              <strong>{me.name}</strong>
+              <span>{me.email}</span>
+            </div>
+            <hr />
+            {mode === "live"
+              ? <button role="menuitem" onClick={() => { setUserOpen(false); void signOut(); }}>Log out</button>
+              : <button role="menuitem" disabled>Demo closet, no account</button>}
+          </div>
+        )}
+      </div>
       <span className="clock">{clock}</span>
     </nav>
   );

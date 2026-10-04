@@ -1,7 +1,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { useData, useItemIndex } from "../lib/data";
 import { go, useRoute } from "../lib/route";
-import { isTagged } from "../lib/types";
+import { firstName, isTagged } from "../lib/types";
 import { Polaroid, tiltFor } from "../components/Polaroid";
 import { StatusPill } from "./Lookbook";
 
@@ -25,7 +25,7 @@ const RULES = [
 ];
 
 export function AskCher() {
-  const { items, looks, stylist, request, mode } = useData();
+  const { items, looks, stylist, request, mode, me } = useData();
   const index = useItemIndex();
   const { query } = useRoute();
 
@@ -71,7 +71,7 @@ export function AskCher() {
           <p className="notepad-sub">Tell her where you're going. She'll go through every piece you own and send back three complete looks.</p>
         </header>
 
-        <label className="pad-label stretch" htmlFor="occasion">Where are we going?</label>
+        <label className="pad-label stretch" htmlFor="occasion">Where are we going, {firstName(me.name)}?</label>
         <textarea
           id="occasion"
           className="lined"

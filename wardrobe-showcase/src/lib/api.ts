@@ -1,5 +1,5 @@
 import { makeFunctionReference } from "convex/server";
-import type { Change, Heartbeat, Item, Look, LookRequest, Note } from "./types";
+import type { Change, Heartbeat, Item, Look, LookRequest, Me, Note } from "./types";
 
 // Typed references to the functions in camera-wardrobe-ingestion/convex, by name,
 // so the site needs neither that folder's codegen nor its dependencies.
@@ -12,6 +12,9 @@ const m = <Args extends Record<string, unknown>, R = unknown>(name: string) =>
 type Empty = Record<string, never>;
 
 export const api = {
+  users: {
+    me: q<Empty, Me | null>("users:me"),
+  },
   items: {
     list: q<Empty, Item[]>("items:list"),
   },

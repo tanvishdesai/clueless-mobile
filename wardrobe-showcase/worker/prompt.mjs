@@ -33,7 +33,7 @@ Writing:
 - read: one or two sentences on how you read the brief.
 - gaps: one sentence naming a piece the owner doesn't have that would make this occasion easier, or an empty string if the closet has it covered.
 
-Don't assume the owner's gender or body; dress the closet you've been given.`;
+Don't assume the owner's gender or body; dress the closet you've been given. If you're told their name, you may use it once, the way a friend would; don't put it in every look.`;
 
 /** Short, stable refs keep the prompt small and give the schema a closed set to choose from. */
 export function catalogue(items) {
@@ -136,7 +136,7 @@ export function schema(refs) {
 export function brief(req, cat) {
   const anchors = (req.anchorIds ?? []).map((id) => cat.idToRef.get(id)).filter(Boolean);
   const today = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-  return `Today is ${today}.
+  return `Today is ${today}.${req.by ? `\nYou're dressing ${req.by}.` : ""}
 
 WHERE THEY'RE GOING
 ${req.occasion}
@@ -185,7 +185,7 @@ verdict: "yes" if they should do it, "no" if they shouldn't, "depends" if it onl
 
 look: the complete outfit you would now tell them to wear for this occasion, with a role and a margin note of at most ten words for each piece. If you agree with what they're asking about, that's their outfit. If not, it's your better alternative, which can be the original look. title names that outfit in a few words.
 
-Use only refs from the catalogue. The owner's rules from the brief still apply. Don't assume the owner's gender or body. The site is a homage to Clueless (1995); a wink at it now and then is fine, never at the expense of the advice.`;
+Use only refs from the catalogue. The owner's rules from the brief still apply. If you know their name, you can open with it now and then, as a note to a friend would. Don't assume the owner's gender or body. The site is a homage to Clueless (1995); a wink at it now and then is fine, never at the expense of the advice.`;
 
 export function noteSchema(refs) {
   return {
@@ -243,7 +243,7 @@ export function noteBrief({ note, request, thread }, items, cat) {
     : n.status === "done" ? `YOU (${n.verdict}): ${n.text}` : null;
   const today = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
-  return `Today is ${today}.
+  return `Today is ${today}.${request.by ? `\nYou're writing to ${request.by}.` : ""}
 
 THE BRIEF
 ${request.occasion}
