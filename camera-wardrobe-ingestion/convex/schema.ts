@@ -44,6 +44,37 @@ const attrs = v.object({
   sizeMl: v.optional(v.number()),
 });
 
+// Roles a piece can play in an outfit. Closed set: the showcase lays a look
+// out by role (outerwear behind the top, shoes at the bottom, ...).
+export const ROLES = [
+  "outerwear", "top", "underlayer", "bottom", "dress", "footwear", "accessory", "fragrance",
+] as const;
+
+// What the stylist writes back. Item ids, not the short refs the model saw.
+const look = v.object({
+  title: v.string(),             // "Monet, But Make It Close-Up"
+  tagline: v.string(),           // one line, the pull quote
+  direction: v.string(),         // "polished prep", "the bold colour story"
+  pieces: v.array(v.object({
+    id: v.id("items"),
+    role: v.string(),            // ROLES
+    note: v.string(),            // margin annotation, a few words
+  })),
+  why: v.string(),               // why it works for this occasion
+  tips: v.array(v.string()),     // how to wear it: tuck, roll, button
+  swaps: v.array(v.object({
+    id: v.id("items"),           // the alternative
+    replaces: v.id("items"),     // the piece it stands in for
+    note: v.string(),
+  })),
+});
+
+const lookbook = v.object({
+  read: v.string(),              // the stylist's read of the brief
+  gaps: v.string(),              // what the closet is missing for this, or ""
+  looks: v.array(look),
+});
+
 export default defineSchema({
   items: defineTable({
     frontId: v.id("_storage"),
@@ -62,4 +93,34 @@ export default defineSchema({
     value: v.string(),
     count: v.number(),
   }).index("by_field_value", ["field", "value"]),
+
+  // ── Wardrobe showcase (../wardrobe-showcase) ───────────────────────────────
+  // One row per "dress me for X" request. The website inserts it pending; the
+  // stylist worker (wardrobe-showcase/worker/stylist.mjs) claims it, asks Claude
+  // Opus 5.5 for looks, and writes the lookbook back. Same shape as ingestion:
+  // the browser queues, the laptop thinks.
+  looks: defineTable({
+    occasion: v.string(),
+    constraints: v.string(),
+    // Pieces every look must be built around ("build a look around this").
+    anchorIds: v.optional(v.array(v.id("items"))),
+    status: v.union(
+      v.literal("pending"), v.literal("styling"), v.literal("done"), v.literal("error"),
+    ),
+    error: v.optional(v.string()),
+    result: v.optional(lookbook),
+    favorite: v.optional(v.boolean()),
+    model: v.optional(v.string()),
+    startedAt: v.optional(v.number()),
+    finishedAt: v.optional(v.number()),
+  }).index("by_status", ["status"]),
+
+  // Liveness for the stylist worker, so the site can say "the stylist's computer
+  // is off" instead of spinning forever.
+  heartbeats: defineTable({
+    worker: v.string(),
+    lastSeen: v.number(),
+    model: v.string(),
+    busy: v.boolean(),
+  }).index("by_worker", ["worker"]),
 });

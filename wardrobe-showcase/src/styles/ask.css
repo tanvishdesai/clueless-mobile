@@ -1,0 +1,86 @@
+/* ── Ask Cher: a brief on spiral-bound notebook paper ───────────────────── */
+
+.ask {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(260px, 1fr);
+  gap: 30px;
+  padding: 34px 28px 30px;
+  align-items: start;
+}
+
+.notepad {
+  position: relative;
+  padding: 34px 32px 24px 70px;
+  background:
+    linear-gradient(90deg, transparent 50px, rgba(200, 16, 46, 0.45) 50px 51px, transparent 51px),
+    #fffef8;
+  border: 1px solid var(--ink);
+  box-shadow: var(--shadow), 0 24px 40px -28px rgba(40, 28, 16, 0.55);
+}
+.notepad::before {
+  /* Spiral binding. */
+  content: ""; position: absolute; left: 16px; right: 16px; top: -12px; height: 24px;
+  background: radial-gradient(circle at 12px 12px, var(--paper) 0 4px, var(--ink) 4.5px 5.5px, transparent 6px) 0 0 / 26px 24px repeat-x;
+}
+.notepad-head h2 { margin: 0; font: italic 600 60px/0.9 var(--f-serif); letter-spacing: -0.02em; }
+.notepad-sub { margin: 10px 0 0; max-width: 52ch; color: var(--ink-2); }
+
+.pad-label { display: block; margin: 26px 0 8px; color: var(--ink); }
+textarea.lined {
+  display: block; width: 100%;
+  padding: 0 4px; border: 0; outline: 0; resize: vertical;
+  font: 400 20px/34px var(--f-hand);
+  color: #1c3a78;
+  background: repeating-linear-gradient(transparent 0 33px, #a9c6e6 33px 34px) local;
+}
+textarea.lined::placeholder { color: #a5b3cc; }
+textarea.lined:focus { background-color: rgba(242, 193, 46, 0.08); }
+
+.presets { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+.presets .chip { background: #fff; }
+.presets .chip:hover { background: var(--pink-soft); }
+
+.anchors { display: flex; flex-wrap: wrap; gap: 22px; align-items: flex-end; padding-top: 6px; }
+.anchor { position: relative; width: 116px; }
+.anchor .polaroid-caption { font-size: 12.5px; min-height: 28px; }
+.anchor-x {
+  position: absolute; top: -10px; right: -10px; z-index: 5;
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 1px solid var(--ink); background: var(--paper);
+  font: 700 16px/1 var(--f-sys);
+}
+.anchor-x:hover { background: var(--red); color: #fff; }
+.anchor-add { max-width: 280px; }
+
+.notepad .notice { margin-top: 22px; }
+.pad-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 22px; margin-top: 28px; }
+.btn.big { min-height: 48px; padding: 10px 30px; font-size: 18px; }
+.pad-model { font-size: 16px; color: var(--ink-3); }
+
+.ask-side { display: flex; flex-direction: column; gap: 26px; }
+.tipcard {
+  padding: 20px 22px 16px;
+  background: #fff3b8;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1), 0 14px 22px -14px rgba(40, 28, 16, 0.55);
+  transform: rotate(1.2deg);
+}
+.tipcard ol { margin: 4px 0 0; padding-left: 20px; font: 400 15px/1.55 var(--f-hand); }
+.recent { border: 1px solid var(--ink); background: var(--paper); padding: 16px; box-shadow: var(--shadow); }
+.recent-row {
+  display: grid; grid-template-columns: 1fr auto; gap: 0 12px; align-items: center;
+  width: 100%; padding: 10px 0; text-align: left;
+  background: none; border: 0; border-top: 1px dotted var(--ink-3);
+}
+.recent-row:hover .recent-title { text-decoration: underline; }
+.recent-title { font: italic 600 19px/1.1 var(--f-serif); }
+.recent-sub { grid-column: 1; font-size: 12.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.recent-row .pill { grid-column: 2; grid-row: 1 / span 2; }
+
+@media (max-width: 1000px) {
+  .ask { grid-template-columns: 1fr; padding: 24px 14px; }
+}
+@media (max-width: 600px) {
+  .notepad { padding: 30px 16px 20px 40px; background: linear-gradient(90deg, transparent 28px, rgba(200, 16, 46, 0.45) 28px 29px, transparent 29px), #fffef8; }
+  .notepad-head h2 { font-size: 44px; }
+  .anchor { width: 96px; }
+}

@@ -1,0 +1,421 @@
+/*
+ * Closet Computer - design tokens and the 1995 desktop.
+ *
+ * Palette from the film: Cher's Gaultier yellow, the grey walls of her closet
+ * ("the walls are gray, but then you have all the pinks and blues and yellows"
+ * - Mona May), Alaïa red, baby pink, powder blue, gold-and-wood hangers, and
+ * the leopard of the closet computer's screensaver.
+ */
+
+:root {
+  --wall: #d3cec6;
+  --wall-deep: #b9b2a8;
+  --paper: #fbf6ec;
+  --paper-2: #f2eadb;
+  --paper-3: #e7dcc8;
+  --ink: #1b1816;
+  --ink-2: #4a433d;
+  --ink-3: #8a8178;
+
+  --yellow: #f2c12e;
+  --yellow-deep: #d39e12;
+  --pink: #f4a6c1;
+  --pink-soft: #fbdbe6;
+  --blue: #a9c6e6;
+  --blue-deep: #3e5f93;
+  --red: #c8102e;
+  --gold: #c9a24a;
+  --gold-hi: #f3d98a;
+  --gold-lo: #8a6a22;
+  --mint: #2f8a5b;
+
+  --screen: #17141f;
+  --phosphor: #f6e7a6;
+  --phosphor-dim: #9c8f63;
+
+  --chrome: #eeebe6;
+  --chrome-2: #dcd8d1;
+
+  --f-logo: "Kavoon", "Cooper Black", serif;
+  --f-serif: "Bodoni Moda", "Didot", "Bodoni 72", serif;
+  --f-hand: "Gloria Hallelujah", "Comic Sans MS", cursive;
+  --f-sys: "Pixelify Sans", "Chicago", "Geneva", system-ui, sans-serif;
+  --f-mono: "VT323", "Monaco", ui-monospace, monospace;
+  --f-sans: "Jost", "Futura", "Century Gothic", system-ui, sans-serif;
+
+  --menubar: 30px;
+  --radius: 2px;
+  --shadow: 2px 2px 0 rgba(27, 24, 22, 0.85);
+  --lift: 0 14px 30px -12px rgba(40, 28, 16, 0.45), 0 2px 4px rgba(40, 28, 16, 0.18);
+
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: var(--wall);
+  color: var(--ink);
+  font: 400 15px/1.5 var(--f-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+}
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+img { display: block; max-width: 100%; }
+::selection { background: var(--yellow); color: var(--ink); }
+
+:focus-visible {
+  outline: 2px dotted var(--ink);
+  outline-offset: 2px;
+}
+
+/* ── Type helpers ───────────────────────────────────────────────────────── */
+
+/* The poster's credits: light Futura, condensed caps, stretched tall. */
+.stretch {
+  font-family: var(--f-sans);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-size: 11px;
+  display: inline-block;
+  transform: scaleY(1.35);
+  transform-origin: left center;
+}
+.hand { font-family: var(--f-hand); }
+.mono { font-family: var(--f-mono); }
+.serif { font-family: var(--f-serif); }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+/* ── Wallpapers ─────────────────────────────────────────────────────────── */
+
+.wall-plaid {
+  /* Cher's Gaultier yellow tartan: alpha bands so crossings go darker, the way a weave does. */
+  background-color: var(--yellow);
+  background-image:
+    repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.045) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(90deg,
+      transparent 0 14px, rgba(31, 27, 24, 0.62) 14px 24px, transparent 24px 32px,
+      rgba(31, 27, 24, 0.45) 32px 34px, transparent 34px 50px,
+      rgba(251, 246, 236, 0.6) 50px 54px, transparent 54px 70px,
+      rgba(62, 95, 147, 0.5) 70px 72px, transparent 72px 82px,
+      rgba(31, 27, 24, 0.62) 82px 92px, transparent 92px 112px),
+    repeating-linear-gradient(0deg,
+      transparent 0 14px, rgba(31, 27, 24, 0.62) 14px 24px, transparent 24px 32px,
+      rgba(31, 27, 24, 0.45) 32px 34px, transparent 34px 50px,
+      rgba(251, 246, 236, 0.6) 50px 54px, transparent 54px 70px,
+      rgba(62, 95, 147, 0.5) 70px 72px, transparent 72px 82px,
+      rgba(31, 27, 24, 0.62) 82px 92px, transparent 92px 112px);
+}
+.wall-dionne {
+  background-color: #f3efe7;
+  background-image:
+    repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.04) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(90deg,
+      transparent 0 10px, rgba(20, 20, 20, 0.78) 10px 26px, transparent 26px 36px,
+      rgba(20, 20, 20, 0.55) 36px 40px, transparent 40px 56px,
+      rgba(200, 16, 46, 0.65) 56px 58px, transparent 58px 72px, rgba(20, 20, 20, 0.78) 72px 88px, transparent 88px 104px),
+    repeating-linear-gradient(0deg,
+      transparent 0 10px, rgba(20, 20, 20, 0.78) 10px 26px, transparent 26px 36px,
+      rgba(20, 20, 20, 0.55) 36px 40px, transparent 40px 56px,
+      rgba(200, 16, 46, 0.65) 56px 58px, transparent 58px 72px, rgba(20, 20, 20, 0.78) 72px 88px, transparent 88px 104px);
+}
+.wall-leopard { background: #d6a35c url("../assets/leopard.svg") 0 0 / 240px 240px; }
+.wall-closet {
+  /* The grey walls of the closet itself, with a faint plaster grain. */
+  background-color: var(--wall);
+  background-image:
+    radial-gradient(circle at 20% 10%, rgba(255, 255, 255, 0.35), transparent 50%),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.025) 0 1px, transparent 1px 3px);
+}
+
+/* ── Desktop shell ──────────────────────────────────────────────────────── */
+
+.desktop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows: var(--menubar) 1fr;
+}
+
+.menubar {
+  position: relative;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 10px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--ink);
+  font: 500 14px/1 var(--f-sys);
+  white-space: nowrap;
+}
+.menubar .brand {
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 10px 0 2px;
+  font-family: var(--f-logo); font-size: 17px; letter-spacing: 0.01em;
+  background: none; border: 0;
+}
+.menubar .brand-mark { width: 20px; height: 20px; }
+.menubar .menu-item {
+  background: none; border: 0; padding: 7px 10px; border-radius: 0;
+}
+.menubar .menu-item[aria-current="page"],
+.menubar .menu-item:hover { background: var(--ink); color: var(--paper); }
+.menubar .spacer { flex: 1; }
+.menubar .status {
+  display: flex; align-items: center; gap: 7px;
+  padding: 0 10px; font-size: 13px; color: var(--ink-2);
+}
+.menubar .dot { width: 9px; height: 9px; border-radius: 50%; border: 1px solid var(--ink); background: #fff; }
+.menubar .dot.on { background: var(--mint); }
+.menubar .dot.busy { background: var(--yellow); animation: blink 0.9s steps(2) infinite; }
+.menubar .clock { padding-left: 10px; min-width: 112px; text-align: right; }
+.menu-pop {
+  position: absolute; top: calc(var(--menubar) - 1px);
+  min-width: 220px; padding: 4px 0;
+  background: var(--paper); border: 1px solid var(--ink); box-shadow: var(--shadow);
+  font: 500 14px/1 var(--f-sys); z-index: 60;
+}
+.menu-pop button {
+  display: flex; width: 100%; justify-content: space-between; gap: 18px;
+  padding: 7px 16px; background: none; border: 0; text-align: left;
+}
+.menu-pop button:hover { background: var(--ink); color: var(--paper); }
+.menu-pop hr { border: 0; border-top: 1px dotted var(--ink-3); margin: 4px 0; }
+.menu-pop .check { width: 12px; display: inline-block; }
+
+.surface {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  padding: 26px 132px 26px 26px;
+}
+
+/* Desktop icons, right-hand column like a Mac's. */
+.icons {
+  position: absolute; top: 20px; right: 14px;
+  display: flex; flex-direction: column; gap: 14px;
+  width: 104px;
+}
+.icon {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background: none; border: 0; padding: 4px;
+}
+.icon svg {
+  width: 46px; height: 46px;
+  filter: drop-shadow(1px 1px 0 rgba(27, 24, 22, 0.6));
+}
+.icon span {
+  font: 500 13px/1.15 var(--f-sys);
+  background: var(--paper); padding: 2px 5px; border: 1px solid transparent;
+}
+.icon[aria-current="page"] span { background: var(--ink); color: var(--paper); }
+.icon[aria-current="page"] svg { filter: drop-shadow(1px 1px 0 rgba(27, 24, 22, 0.6)) brightness(0.82); }
+
+/* ── Windows ────────────────────────────────────────────────────────────── */
+
+.window {
+  position: relative;
+  display: flex; flex-direction: column;
+  width: min(1240px, 100%);
+  max-height: 100%;
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  box-shadow: var(--shadow), 0 30px 60px -30px rgba(40, 28, 16, 0.5);
+  animation: zoom-open 0.22s cubic-bezier(.2, .8, .2, 1);
+}
+.titlebar {
+  position: relative;
+  flex: none;
+  height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  border-bottom: 1px solid var(--ink);
+  background: var(--paper);
+  user-select: none;
+}
+.titlebar::before {
+  /* System 7 pinstripes. */
+  content: ""; position: absolute; inset: 5px 6px;
+  background: repeating-linear-gradient(180deg, var(--ink) 0 1px, transparent 1px 3px);
+}
+.titlebar .title {
+  position: relative;
+  padding: 0 12px;
+  background: var(--paper);
+  font: 500 14px/26px var(--f-sys);
+  max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.titlebar .box {
+  position: absolute; top: 6px;
+  width: 14px; height: 14px; padding: 0;
+  background: var(--paper); border: 1px solid var(--ink);
+}
+.titlebar .box.close { left: 12px; }
+.titlebar .box.zoom { right: 12px; }
+.titlebar .box.zoom::after {
+  content: ""; position: absolute; left: 1px; top: 1px; width: 6px; height: 6px; border: 1px solid var(--ink);
+}
+.titlebar .box:active { background: var(--ink); }
+.window.inactive .titlebar::before { opacity: 0; }
+
+.window-body { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.window-foot {
+  flex: none;
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 4px 12px;
+  border-top: 1px solid var(--ink);
+  font: 400 16px/1.1 var(--f-mono);
+  color: var(--ink-2);
+  background: var(--paper-2);
+}
+
+/* Floating secondary window (item file card). */
+.float-layer {
+  position: fixed; inset: var(--menubar) 0 0 0; z-index: 40;
+  display: grid; place-items: center;
+  background: rgba(27, 24, 22, 0.18);
+  padding: 24px;
+}
+.float-layer .window { width: min(880px, 100%); max-height: calc(100vh - var(--menubar) - 48px); }
+
+/* ── Controls ───────────────────────────────────────────────────────────── */
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 34px; padding: 6px 16px;
+  font: 500 14px/1 var(--f-sys);
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  border-radius: 8px;
+  box-shadow: 1px 1px 0 var(--ink);
+  transition: transform 0.05s;
+}
+.btn:hover { background: var(--paper-2); }
+.btn:active { transform: translate(1px, 1px); box-shadow: none; background: var(--ink); color: var(--paper); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+/* The default button gets the thick outer ring, as on a 1995 Mac. */
+.btn.default { outline: 3px solid var(--ink); outline-offset: 2px; }
+.btn.hot { background: var(--yellow); }
+.btn.hot:hover { background: #f6cf55; }
+.btn.small { min-height: 28px; padding: 4px 11px; font-size: 13px; border-radius: 6px; }
+.btn.ghost { box-shadow: none; border-color: transparent; background: none; }
+.btn.ghost:hover { border-color: var(--ink); }
+
+.seg {
+  display: inline-flex; flex-wrap: wrap;
+  border: 1px solid var(--ink); border-radius: 6px; overflow: hidden;
+  background: var(--paper);
+}
+.seg button {
+  padding: 6px 12px; border: 0; border-right: 1px solid var(--ink);
+  background: none; font: 500 13px/1 var(--f-sys);
+}
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.seg button:not([aria-pressed="true"]):hover { background: var(--paper-2); }
+
+.field {
+  border: 1px solid var(--ink); border-radius: 0;
+  background: #fff; padding: 6px 9px;
+  box-shadow: inset 1px 1px 0 rgba(0, 0, 0, 0.15);
+  font: 500 14px/1.2 var(--f-sys);
+}
+.field::placeholder { color: var(--ink-3); }
+
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--ink); border-radius: 999px;
+  background: var(--paper); font: 400 13px/1.3 var(--f-sans);
+}
+
+.sticker {
+  display: inline-block; padding: 2px 8px 1px;
+  font: 400 13px/1.4 var(--f-hand);
+  border-radius: 3px;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.15);
+}
+.sticker:nth-child(4n+1) { background: var(--pink-soft); transform: rotate(-1.5deg); }
+.sticker:nth-child(4n+2) { background: #fff3b8; transform: rotate(1deg); }
+.sticker:nth-child(4n+3) { background: #dbe8f6; transform: rotate(-0.5deg); }
+.sticker:nth-child(4n+4) { background: #e2f1df; transform: rotate(1.5deg); }
+
+.swatch {
+  width: 14px; height: 14px; flex: none;
+  border: 1px solid rgba(27, 24, 22, 0.55); border-radius: 50%;
+}
+
+.empty {
+  display: grid; place-items: center; gap: 12px; text-align: center;
+  padding: 72px 24px; color: var(--ink-2);
+}
+.empty h2 { font: italic 600 34px/1.05 var(--f-serif); margin: 0; color: var(--ink); }
+.empty p { max-width: 44ch; margin: 0; }
+.empty code, .notice code {
+  font: 400 17px/1 var(--f-mono); background: var(--screen); color: var(--phosphor);
+  padding: 2px 7px;
+}
+
+.notice {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 12px 14px;
+  border: 1px solid var(--ink); background: #fff7cf;
+  box-shadow: var(--shadow);
+  font-size: 14px;
+}
+.notice strong { font-family: var(--f-sys); font-weight: 600; }
+
+/* ── Mobile tab bar ─────────────────────────────────────────────────────── */
+
+.tabbar { display: none; }
+
+@media (max-width: 860px) {
+  :root { --menubar: 40px; }
+  .menubar { font-size: 13px; gap: 0; padding: 0 8px; }
+  .menubar .menu-item, .menubar .status .label, .menubar .count { display: none; }
+  .menubar .clock { min-width: 0; }
+  .desktop { grid-template-rows: var(--menubar) 1fr auto; }
+  .surface { padding: 10px 8px; }
+  .icons { display: none; }
+  .window { width: 100%; animation: none; }
+  .titlebar .box.zoom { display: none; }
+  .tabbar {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    background: var(--paper); border-top: 1px solid var(--ink);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .tabbar button {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 7px 0 6px; background: none; border: 0;
+    font: 500 12px/1 var(--f-sys);
+  }
+  .tabbar svg { width: 30px; height: 30px; }
+  .tabbar button[aria-current="page"] { background: var(--ink); color: var(--paper); }
+  .float-layer { padding: 8px; }
+  .float-layer .window { max-height: calc(100dvh - var(--menubar) - 16px); }
+}
+
+/* ── Motion ─────────────────────────────────────────────────────────────── */
+
+@keyframes blink { 50% { opacity: 0; } }
+@keyframes zoom-open {
+  from { transform: scale(0.97); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes barber { to { background-position: 40px 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

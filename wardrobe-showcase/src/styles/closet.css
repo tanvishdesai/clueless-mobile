@@ -1,0 +1,235 @@
+/* ── Closet: header, toolbar, rails, catalogue ──────────────────────────── */
+
+.closet, .archive { padding: 22px 26px 34px; }
+
+.closet-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: end;
+  gap: 18px 28px;
+  padding-bottom: 18px;
+  border-bottom: 3px double var(--ink);
+}
+.closet-title {
+  margin: 0;
+  font: italic 600 64px/0.9 var(--f-serif);
+  letter-spacing: -0.02em;
+}
+.closet-strip {
+  display: flex; height: 26px; align-self: center;
+  border: 1px solid var(--ink);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  min-width: 0;
+}
+.closet-strip span { flex: 1; min-width: 1px; }
+.closet-stats {
+  display: grid; grid-template-columns: repeat(3, auto); gap: 0 16px;
+  margin: 0; font-size: 17px; line-height: 1.15;
+}
+.closet-stats div { display: flex; justify-content: space-between; gap: 8px; }
+.closet-stats dt { color: var(--ink-2); }
+.closet-stats dd { margin: 0; }
+
+.toolbar {
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px;
+  padding: 14px 0 6px;
+  position: sticky; top: 0; z-index: 15;
+  background: linear-gradient(var(--paper) 80%, transparent);
+}
+.toolbar-right { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.search { width: 230px; }
+
+/* A rail of the revolving closet. */
+.rail { margin-top: 22px; }
+.rail-head { display: flex; align-items: baseline; gap: 10px; }
+.rail-head h3 { margin: 0; font: italic 600 28px/1 var(--f-serif); }
+.rail-head .mono { font-size: 20px; color: var(--ink-3); }
+.rail-rule { flex: 1; border-bottom: 1px dotted var(--ink-3); transform: translateY(-5px); }
+.rail-nav { display: flex; gap: 6px; }
+
+.rail-track {
+  position: relative;
+  display: flex; gap: 18px;
+  overflow-x: auto; overflow-y: hidden;
+  padding: 26px 8px 22px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ink) transparent;
+}
+.rail.hangs .rail-track {
+  /* The brass rail, scrolling with the hangers. */
+  padding-top: 12px;
+  background: linear-gradient(180deg, var(--gold-hi), var(--gold) 45%, var(--gold-lo)) 0 15px / 100% 8px no-repeat local;
+}
+.rail.shelf .rail-track {
+  padding-top: 10px; padding-bottom: 28px;
+  background: linear-gradient(transparent calc(100% - 18px), #c7b293 calc(100% - 18px), #b49b77 calc(100% - 10px), rgba(0, 0, 0, 0.08) calc(100% - 9px), transparent calc(100% - 4px));
+  align-items: flex-end;
+}
+
+.hanging {
+  flex: none;
+  width: 168px;
+  display: flex; flex-direction: column; align-items: center;
+  scroll-snap-align: start;
+  transform-origin: 50% 0;
+}
+.rail.hangs .hanging:hover { animation: swing 1.1s ease-out; }
+.hanger { width: 112px; height: auto; margin-bottom: -16px; position: relative; z-index: 2; pointer-events: none; }
+.hanging .polaroid { width: 100%; }
+.rail.shelf .hanging { width: 150px; }
+
+@keyframes swing {
+  0% { transform: rotate(0); }
+  20% { transform: rotate(3.5deg); }
+  45% { transform: rotate(-2.4deg); }
+  70% { transform: rotate(1.2deg); }
+  100% { transform: rotate(0); }
+}
+
+.untagged-note { margin: 6px 0 0; font-size: 14px; color: var(--ink-2); }
+.untagged-note code { background: var(--screen); color: var(--phosphor); padding: 0 5px; font-size: 16px; }
+.untagged .polaroid { opacity: 0.7; filter: grayscale(0.6); }
+
+/* Catalogue: Heckerling's wine-cellar index, as cards. */
+.catalogue {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
+  gap: 22px 18px;
+  padding-top: 18px;
+}
+.card {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 0; border: 0; background: none; text-align: left;
+}
+.card .polaroid { padding-bottom: 7px; }
+.card:hover .polaroid { transform: translateY(-3px); box-shadow: var(--lift); }
+.card-body { display: flex; flex-direction: column; gap: 3px; padding: 0 2px; }
+.card-file { font-size: 15px; color: var(--ink-3); line-height: 1; }
+.card-name { font: italic 600 18px/1.1 var(--f-serif); }
+.card-meta { display: flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--ink-2); }
+.swatch.small { width: 10px; height: 10px; margin-left: -9px; }
+
+/* ── Item file card ─────────────────────────────────────────────────────── */
+
+.file {
+  display: grid; grid-template-columns: minmax(240px, 0.9fr) 1.1fr; gap: 28px;
+  padding: 24px;
+}
+.file-photo { display: flex; flex-direction: column; gap: 12px; align-items: center; }
+.flip {
+  position: relative; width: 100%; aspect-ratio: 3 / 4;
+  padding: 0; border: 8px solid #fffdf8; border-bottom-width: 36px;
+  background: #fffdf8;
+  box-shadow: var(--lift);
+  perspective: 1200px;
+  transform: rotate(-1.2deg);
+}
+.flip-face {
+  position: absolute; inset: 0; overflow: hidden;
+  backface-visibility: hidden;
+  transition: transform 0.6s cubic-bezier(.3, .7, .2, 1);
+}
+.flip-face img { width: 100%; height: 100%; object-fit: cover; }
+.flip-face.back { transform: rotateY(180deg); }
+.flip.back .flip-face.front { transform: rotateY(-180deg); }
+.flip.back .flip-face.back { transform: rotateY(0); }
+
+.file-info { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.file-no { margin: 0; font-size: 18px; color: var(--ink-3); }
+.file-name { margin: 0; font: italic 600 44px/0.95 var(--f-serif); letter-spacing: -0.015em; }
+
+.chips-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.paint {
+  display: flex; flex-direction: column; justify-content: space-between;
+  width: 96px; height: 64px; padding: 6px 8px;
+  border: 1px solid rgba(27, 24, 22, 0.4);
+  font-size: 12.5px; line-height: 1.1;
+  box-shadow: 1px 1px 0 rgba(27, 24, 22, 0.35);
+}
+.paint.lead { width: 132px; height: 80px; font-size: 14px; }
+.paint .mono { font-size: 15px; opacity: 0.85; }
+
+.readout {
+  margin: 4px 0 0; padding: 12px 14px;
+  background: var(--screen); color: var(--phosphor);
+  border: 1px solid var(--ink);
+  box-shadow: inset 0 0 0 1px #000, inset 0 0 24px rgba(246, 231, 166, 0.06);
+  font-size: 19px; line-height: 1.25;
+}
+.readout .row { display: flex; gap: 10px; align-items: baseline; }
+.readout dt { width: 118px; flex: none; color: var(--phosphor-dim); text-transform: uppercase; }
+.readout dd { margin: 0; text-transform: uppercase; }
+.scale { display: flex; align-items: center; gap: 4px; }
+.scale span { width: 14px; height: 10px; border: 1px solid var(--phosphor-dim); }
+.scale span.on { background: var(--phosphor); border-color: var(--phosphor); }
+.scale em { font-style: normal; margin-left: 8px; }
+.seasons { display: flex; gap: 6px; }
+.seasons span { padding: 0 5px; border: 1px solid #4e4734; color: #6a6046; }
+.seasons span.on { border-color: var(--phosphor); color: var(--screen); background: var(--phosphor); }
+
+.pyramid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.pyramid p { margin: 6px 0 0; font-size: 13.5px; }
+.stickers { display: flex; flex-wrap: wrap; gap: 6px; }
+.file-notes { margin: 0; font-size: 16px; line-height: 1.45; color: var(--ink-2); }
+.file-actions { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 6px; padding-top: 14px; border-top: 1px dotted var(--ink-3); }
+
+/* ── Archive: magazine covers ───────────────────────────────────────────── */
+
+.covers {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 26px;
+  padding-top: 24px;
+}
+.cover {
+  position: relative;
+  display: grid; grid-template-rows: auto 1fr auto auto auto;
+  aspect-ratio: 3 / 4;
+  padding: 12px 14px;
+  border: 1px solid var(--ink);
+  box-shadow: var(--shadow);
+  text-align: left;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.cover:hover { transform: translateY(-4px) rotate(-0.6deg); box-shadow: 4px 6px 0 var(--ink); }
+.cover-mast { display: flex; justify-content: space-between; align-items: center; }
+.cover-mast .mono { font-size: 16px; }
+.cover-photos { position: relative; margin: 8px 0; min-height: 0; }
+.cover-photo {
+  position: absolute; top: 2%;
+  left: calc(4% + var(--i) * 26%);
+  height: 88%; aspect-ratio: 3 / 4;
+  border: 5px solid #fffdf8;
+  box-shadow: 0 6px 12px -4px rgba(0, 0, 0, 0.4);
+  transform: rotate(var(--tilt)) translateY(calc(var(--i) * 6%));
+  overflow: hidden;
+  z-index: calc(3 - var(--i));
+}
+.cover-photo img { width: 100%; height: 100%; object-fit: cover; }
+.cover-wait { position: absolute; inset: 0; display: grid; place-content: center; gap: 10px; justify-items: center; font-size: 22px; }
+.cover-title { font: italic 600 30px/0.95 var(--f-serif); letter-spacing: -0.02em; text-wrap: balance; }
+.cover-line { margin-top: 6px; font-size: 10px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; transform-origin: left top; }
+.cover-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: 15px; }
+.cover-foot .mono { font-size: 16px; }
+
+@media (max-width: 860px) {
+  .closet, .archive { padding: 16px 14px 28px; }
+  .closet-head { grid-template-columns: 1fr; gap: 12px; }
+  .closet-title { font-size: 46px; }
+  .closet-stats { grid-template-columns: repeat(2, auto); justify-content: start; }
+  .toolbar { position: static; }
+  .search { width: 100%; flex: 1 1 100%; }
+  .toolbar-right { width: 100%; }
+  .hanging { width: 140px; }
+  .rail.shelf .hanging { width: 128px; }
+  .hanger { width: 94px; }
+  .rail-nav { display: none; }
+  .catalogue { grid-template-columns: repeat(2, 1fr); gap: 18px 12px; }
+  .file { grid-template-columns: 1fr; padding: 16px; gap: 20px; }
+  .flip { width: 78%; }
+  .file-name { font-size: 34px; }
+  .covers { gap: 18px; }
+}

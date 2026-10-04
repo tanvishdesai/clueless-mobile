@@ -1,0 +1,6 @@
+# Each app has its own .gitignore; this is the safety net for anything left at
+# the root from before the split (an old .env.local holds the OAuth token).
+node_modules/
+.env
+.env.local
+.env*.local

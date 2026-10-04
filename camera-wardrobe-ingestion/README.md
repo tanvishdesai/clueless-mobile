@@ -1,4 +1,4 @@
-# Clueless
+# Clueless — camera wardrobe ingestion
 
 Closet ingestion. Point the camera at a garment, shoot front then back, and the
 pair uploads itself and gets catalogued by Claude. Browse the result in the
@@ -7,6 +7,11 @@ second tab.
 - **App**: React Native / Expo SDK 57 (Android APK via EAS)
 - **Backend**: Convex — `elegant-owl-354` ([dashboard](https://dashboard.convex.dev/d/elegant-owl-354))
 - **Classifier**: Claude Sonnet 5, effort `medium`, JSON-schema structured output
+
+The Convex backend in `convex/` is shared with [`../wardrobe-showcase`](../wardrobe-showcase),
+which reads the closet and stores its lookbooks here (`convex/looks.ts`). A
+deployment has one functions directory, so deploy both apps' functions from
+this folder. Keep `.env.local` in this folder too.
 
 ## Tagging
 
@@ -65,6 +70,7 @@ matching will actually need.
 |---|---|
 | `convex/schema.ts` | tables + the closed-set enums |
 | `convex/items.ts` | upload URLs, create, list, pending, vocab, saveTags, retry, delete |
+| `convex/looks.ts` | the showcase's outfit requests, lookbooks and stylist heartbeat |
 | `worker/ingest.mjs` | the Sonnet 5 call, via the Claude Agent SDK |
 | `Capture.tsx` | camera; front → back → fire-and-forget upload |
 | `Closet.tsx` | grid, category filter, detail sheet |
@@ -113,6 +119,6 @@ is gitignored and never reaches EAS, so the URL has to be baked in there.
 
 - In-app label editing. The Convex dashboard edits rows fine for the handful
   that come out wrong.
-- Outfit / colour-combination logic. That is the next app; the hex codes are
-  already stored for it.
+- Outfit / colour-combination logic lives in the next app,
+  [`../wardrobe-showcase`](../wardrobe-showcase), which uses the stored hex codes.
 - Prompt caching on the system block. Would shave maybe 15% off $1.35.
