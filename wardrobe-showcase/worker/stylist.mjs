@@ -15,7 +15,7 @@
 import { ConvexHttpClient } from "convex/browser";
 import { anyApi } from "convex/server";
 import { query } from "@anthropic-ai/claude-agent-sdk";
-import { SYSTEM, brief, catalogue, resolve, schema } from "./prompt.mjs";
+import { NOTE_SYSTEM, SYSTEM, brief, catalogue, noteBrief, noteSchema, resolve, resolveNote, schema } from "./prompt.mjs";
 
 const MODEL = "claude-opus-5-5";
 const EFFORT = "medium";
@@ -67,6 +67,36 @@ async function style(req) {
   return resolve(output, cat);
 }
 
+/** One reply in the fitting room. Same harness, model and effort as a lookbook. */
+async function reply(noteId) {
+  const ctx = await convex.query(anyApi.notes.context, { id: noteId });
+  if (!ctx?.request?.result?.looks[ctx.note.lookIndex]) throw new Error("that look no longer exists");
+  const items = await convex.query(anyApi.items.list, {});
+  const cat = catalogue(items);
+
+  let output;
+  for await (const m of query({
+    prompt: noteBrief(ctx, items, cat),
+    options: {
+      model: MODEL,
+      effort: EFFORT,
+      systemPrompt: NOTE_SYSTEM,
+      tools: [],
+      outputFormat: { type: "json_schema", schema: noteSchema([...cat.refToId.keys()]) },
+      maxTurns: 4,
+      settingSources: [],
+      persistSession: false,
+      env: { ...process.env, CLAUDE_CODE_OAUTH_TOKEN: TOKEN },
+    },
+  })) {
+    if (m.type === "result") {
+      if (m.is_error) throw new Error(`agent: ${m.subtype} ${JSON.stringify(m.result ?? "").slice(0, 200)}`);
+      output = m.structured_output ?? parseLoose(m.result);
+    }
+  }
+  return resolveNote(output, cat);
+}
+
 function parseLoose(text) {
   const m = String(text ?? "").match(/\{[\s\S]*\}/);
   return m ? JSON.parse(m[0]) : undefined;
@@ -75,9 +105,38 @@ function parseLoose(text) {
 let busy = false;
 const beat = () => convex.mutation(anyApi.looks.heartbeat, { model: MODEL, busy }).catch(() => {});
 
+/** Notes first: someone is standing in the fitting room waiting for an answer. */
+async function drainNotes() {
+  let worked = 0;
+  for (;;) {
+    const queue = await convex.query(anyApi.notes.pending, {});
+    if (!queue.length) return worked;
+    for (const note of queue) {
+      if (!(await convex.mutation(anyApi.notes.claim, { id: note._id }))) continue;
+      busy = true;
+      void beat();
+      const t0 = Date.now();
+      try {
+        const r = await reply(note._id);
+        await convex.mutation(anyApi.notes.finish, { id: note._id, ...r });
+        console.log(`✎ ${r.verdict}: ${r.text.slice(0, 80)}  (${((Date.now() - t0) / 1000).toFixed(0)}s)`);
+      } catch (e) {
+        const msg = String(e?.message ?? e);
+        console.error(`✗ note ${note._id}: ${msg}`);
+        await convex.mutation(anyApi.notes.finish, { id: note._id, error: msg });
+      } finally {
+        busy = false;
+        void beat();
+      }
+      worked++;
+    }
+  }
+}
+
 async function drain() {
   let worked = 0;
   for (;;) {
+    worked += await drainNotes();
     const queue = await convex.query(anyApi.looks.pending, {});
     if (!queue.length) return worked;
     for (const req of queue) {

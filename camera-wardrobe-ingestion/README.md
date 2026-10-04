@@ -71,6 +71,7 @@ matching will actually need.
 | `convex/schema.ts` | tables + the closed-set enums |
 | `convex/items.ts` | upload URLs, create, list, pending, vocab, saveTags, retry, delete |
 | `convex/looks.ts` | the showcase's outfit requests, lookbooks and stylist heartbeat |
+| `convex/notes.ts` | the showcase's fitting-room threads: notes about one look |
 | `worker/ingest.mjs` | the Sonnet 5 call, via the Claude Agent SDK |
 | `Capture.tsx` | camera; front → back → fire-and-forget upload |
 | `Closet.tsx` | grid, category filter, detail sheet |

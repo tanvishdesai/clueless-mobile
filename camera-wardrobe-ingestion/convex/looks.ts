@@ -85,7 +85,24 @@ export const setFavorite = mutation({
 
 export const remove = mutation({
   args: { id: v.id("looks") },
-  handler: async (ctx, { id }) => ctx.db.delete(id),
+  handler: async (ctx, { id }) => {
+    const notes = await ctx.db.query("notes").withIndex("by_look", (q) => q.eq("lookId", id)).collect();
+    for (const n of notes) await ctx.db.delete(n._id);
+    await ctx.db.delete(id);
+  },
+});
+
+/** "Keep this version" from the fitting room: add a look to a finished lookbook. */
+export const addLook = mutation({
+  args: { id: v.id("looks"), look: v.any() },
+  handler: async (ctx, { id, look }) => {
+    const row = await ctx.db.get(id);
+    if (!row?.result) throw new Error("that lookbook isn't finished");
+    if (row.result.looks.length >= 9) throw new Error("this issue is full - nine looks is plenty");
+    // The table validator checks the look's shape on write.
+    await ctx.db.patch(id, { result: { ...row.result, looks: [...row.result.looks, look] } });
+    return row.result.looks.length;
+  },
 });
 
 export const heartbeat = mutation({

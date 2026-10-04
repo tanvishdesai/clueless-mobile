@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useData, useItemIndex } from "../lib/data";
-import { go } from "../lib/route";
-import { isTagged, type Item, type Look, type LookRequest, type Tagged } from "../lib/types";
+import { go, useRoute } from "../lib/route";
+import { isTagged, type Change, type Item, type Look, type LookRequest, type Piece, type Tagged } from "../lib/types";
+import { applyChange, isEmpty as isEmptyChange, NO_CHANGE, samePieces } from "../lib/outfit";
+import { FittingRoom, type Picking } from "./Fitting";
 import { judge } from "../lib/match";
 import { close as sameColour } from "../lib/color";
 import { Photo, Polaroid, tiltFor } from "../components/Polaroid";
@@ -166,12 +168,24 @@ function Failed({ req }: { req: LookRequest }) {
 
 function Magazine({ req }: { req: LookRequest }) {
   const index = useItemIndex();
-  const { setFavorite, remove, request } = useData();
+  const { setFavorite, remove, request, notes } = useData();
+  const { query } = useRoute();
   const book = req.result!;
-  const [n, setN] = useState(0);
+  const n = Math.min(Math.max(0, Number(query.get("look") ?? 0) || 0), book.looks.length - 1);
+  const fit = query.get("fit") === "1";
   const [copied, setCopied] = useState(false);
-  const look = book.looks[Math.min(n, book.looks.length - 1)];
+  const look = book.looks[n];
   const seconds = req.finishedAt && req.startedAt ? Math.round((req.finishedAt - req.startedAt) / 1000) : undefined;
+  const at = (i: number, fitting = false) => go("lookbook", req._id, fitting ? { look: String(i), fit: "1" } : { look: String(i) });
+
+  // A different look starts at its headline, wherever you were on the last one.
+  const top = useRef<HTMLElement>(null);
+  const shownLook = useRef(n);
+  useEffect(() => {
+    if (shownLook.current !== n) top.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    shownLook.current = n;
+  }, [n]);
+  const noteCount = (i: number) => (notes ?? []).filter((x) => x.lookId === req._id && x.lookIndex === i && x.author === "you").length;
 
   const copy = async () => {
     await navigator.clipboard.writeText(asText(req, index));
@@ -181,12 +195,13 @@ function Magazine({ req }: { req: LookRequest }) {
   const restyle = async () => go("lookbook", await request({ occasion: req.occasion, constraints: req.constraints, anchorIds: req.anchorIds }));
 
   return (
-    <article className="mag">
+    <article className="mag" ref={top}>
       <nav className="mag-tabs" aria-label="Looks">
         <button className="mag-back" onClick={() => go("lookbook")}>◀ All issues</button>
         {book.looks.map((l, i) => (
-          <button key={i} aria-current={i === n ? "page" : undefined} onClick={() => setN(i)}>
+          <button key={i} aria-current={i === n ? "page" : undefined} onClick={() => at(i, fit)}>
             <span className="mono">{String(i + 1).padStart(2, "0")}</span> {l.title}
+            {noteCount(i) > 0 && <span className="tab-notes" title={`${noteCount(i)} notes`}>✎{noteCount(i)}</span>}
           </button>
         ))}
       </nav>
@@ -209,7 +224,17 @@ function Magazine({ req }: { req: LookRequest }) {
           )}
         </div>
 
-        <Spread look={look} occasion={req.occasion} index={index} />
+        <LookPage
+          key={n}
+          req={req}
+          n={n}
+          look={look}
+          fit={fit}
+          index={index}
+          notes={noteCount(n)}
+          onFit={(open) => at(n, open)}
+          onKept={(i) => at(i)}
+        />
 
         <footer className="mag-foot">
           <div className="mag-actions">
@@ -224,112 +249,188 @@ function Magazine({ req }: { req: LookRequest }) {
 
       {book.looks.length > 1 && (
         <div className="mag-pager">
-          <button className="btn" disabled={n === 0} onClick={() => setN(n - 1)}>◀ Previous look</button>
-          <button className="btn" disabled={n === book.looks.length - 1} onClick={() => setN(n + 1)}>Next look ▶</button>
+          <button className="btn" disabled={n === 0} onClick={() => at(n - 1)}>◀ Previous look</button>
+          <button className="btn" disabled={n === book.looks.length - 1} onClick={() => at(n + 1)}>Next look ▶</button>
         </div>
       )}
     </article>
   );
 }
 
-function Spread({ look, occasion, index }: { look: Look; occasion: string; index: Map<string, Item> }) {
-  const pieces = useMemo(
-    () => look.pieces.map((p) => ({ ...p, item: index.get(p.id) })).filter((p): p is typeof p & { item: Tagged } => !!p.item && isTagged(p.item)),
-    [look, index],
+type Placed = { id: string; role: string; note: string; item: Tagged };
+
+/**
+ * One look's page. In the fitting room the collage becomes the mannequin
+ * (whatever you're trying on) and the article column becomes the notes.
+ */
+function LookPage({ req, n, look, fit, index, notes, onFit, onKept }: {
+  req: LookRequest; n: number; look: Look; fit: boolean; index: Map<string, Item>; notes: number;
+  onFit: (open: boolean) => void; onKept: (i: number) => void;
+}) {
+  const [worn, setWorn] = useState<Piece[]>(look.pieces);
+  const [change, setChange] = useState<Change>(NO_CHANGE);
+  const [picking, setPicking] = useState<Picking>(null);
+  const preview = useMemo(() => applyChange(worn, change, index), [worn, change, index]);
+  const shown = fit ? preview : look.pieces;
+
+  const placed = useMemo(
+    () => shown.map((p) => ({ ...p, item: index.get(p.id) })).filter((p): p is Placed => !!p.item && isTagged(p.item)),
+    [shown, index],
   );
-  const verdict = judge(pieces.map((p) => p.item));
-  const palette = pieces.reduce<{ hex: string; name: string }[]>((acc, p) => {
-    const { primaryHex: hex, primaryColor: name } = p.item.attrs;
-    if (p.role !== "fragrance" && !acc.some((c) => sameColour(c.hex, hex))) acc.push({ hex, name });
-    return acc;
-  }, []);
-  const missing = look.pieces.length - pieces.length;
+  const isNew = (id: string) => fit && !look.pieces.some((p) => p.id === id);
+  const verdict = judge(placed.map((p) => p.item));
+  const missing = shown.length - placed.length;
+
+  const openWith = (c?: Change) => {
+    if (c) setChange(c);
+    onFit(true);
+  };
+  const wear = (pieces: Piece[]) => { setWorn(pieces); setChange(NO_CHANGE); };
+
+  // The note card sits at the end of the article; bring the fitting room up to meet you.
+  const top = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (fit) top.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [fit]);
 
   return (
-    <div className="spread">
+    <div className={`spread ${fit ? "fitting" : ""}`} ref={top}>
       <div className="collage-col">
-        <Collage pieces={pieces} />
+        {fit && (
+          <div className="mannequin-bar">
+            <span className="hand">{isEmptyChange(change) && samePieces(preview, look.pieces) ? "Click a piece to swap it or take it off." : "Trying it on…"}</span>
+            <span className={`computer-says ${verdict.match ? "" : "warn"}`} title="The closet computer's instant check">
+              <span className="stretch">Computer says</span>
+              <strong>{verdict.match ? "MATCH" : "MIS-MATCH"}</strong>
+              <span className="mono">{verdict.score}</span>
+            </span>
+          </div>
+        )}
+        <Collage pieces={placed} isNew={isNew} onPick={fit ? (id) => setPicking({ swapFor: id }) : undefined} />
         <ol className="credits">
-          {pieces.map((p, i) => (
-            <li key={p.id}>
-              <span className="credit-no">{i + 1}</span>
+          {placed.map((p, i) => (
+            <li key={p.id} className={isNew(p.id) ? "is-new" : ""}>
+              <span className="credit-no">{isNew(p.id) ? "+" : i + 1}</span>
               <span className="credit-name">{p.item.attrs.name}{p.item.attrs.brand ? <em>, {p.item.attrs.brand}</em> : null}</span>
-              <span className="credit-note hand">{p.note}</span>
+              <span className="credit-note hand">{p.note || (fit ? "trying it on" : "")}</span>
             </li>
           ))}
         </ol>
         {missing > 0 && <p className="mono muted">{missing} piece(s) from this look are no longer in the closet.</p>}
       </div>
 
-      <div className="text-col">
-        <p className="stretch kicker red">For: {occasion.length > 56 ? `${occasion.slice(0, 54).trimEnd()}…` : occasion}</p>
-        <h2 className="headline">{look.title}</h2>
-        {look.direction && <p className="stretch direction">{look.direction}</p>}
-        {look.tagline && <blockquote className="pull">{look.tagline}</blockquote>}
+      {fit ? (
+        <FittingRoom
+          req={req}
+          lookIndex={n}
+          look={look}
+          base={look.pieces}
+          worn={worn}
+          preview={preview}
+          change={change}
+          setChange={setChange}
+          onWear={wear}
+          onKept={onKept}
+          onClose={() => { onFit(false); setPicking(null); }}
+          picking={picking}
+          setPicking={setPicking}
+          index={index}
+        />
+      ) : (
+        <Article look={look} occasion={req.occasion} placed={placed} index={index} verdict={verdict} notes={notes} onOpen={openWith} />
+      )}
+    </div>
+  );
+}
 
-        <section className="why">
-          <h3 className="stretch">Why it works</h3>
-          <p className="dropcap">{look.why}</p>
+function Article({ look, occasion, placed, index, verdict, notes, onOpen }: {
+  look: Look; occasion: string; placed: Placed[]; index: Map<string, Item>;
+  verdict: { score: number; match: boolean }; notes: number; onOpen: (c?: Change) => void;
+}) {
+  const palette = placed.reduce<{ hex: string; name: string }[]>((acc, p) => {
+    const { primaryHex: hex, primaryColor: name } = p.item.attrs;
+    if (p.role !== "fragrance" && !acc.some((c) => sameColour(c.hex, hex))) acc.push({ hex, name });
+    return acc;
+  }, []);
+
+  return (
+    <div className="text-col">
+      <p className="stretch kicker red">For: {occasion.length > 56 ? `${occasion.slice(0, 54).trimEnd()}…` : occasion}</p>
+      <h2 className="headline">{look.title}</h2>
+      {look.direction && <p className="stretch direction">{look.direction}</p>}
+      {look.tagline && <blockquote className="pull">{look.tagline}</blockquote>}
+
+      <section className="why">
+        <h3 className="stretch">Why it works</h3>
+        <p className="dropcap">{look.why}</p>
+      </section>
+
+      {palette.length > 0 && (
+        <section>
+          <h3 className="stretch">The palette</h3>
+          <div className="paint-chips">
+            {palette.map((c) => (
+              <span key={c.hex} className="paint-chip">
+                <span className="paint-chip-colour" style={{ background: c.hex }} />
+                <span className="paint-chip-name">{c.name}</span>
+                <span className="mono">{c.hex.toUpperCase()}</span>
+              </span>
+            ))}
+          </div>
         </section>
+      )}
 
-        {palette.length > 0 && (
-          <section>
-            <h3 className="stretch">The palette</h3>
-            <div className="paint-chips">
-              {palette.map((c) => (
-                <span key={c.hex} className="paint-chip">
-                  <span className="paint-chip-colour" style={{ background: c.hex }} />
-                  <span className="paint-chip-name">{c.name}</span>
-                  <span className="mono">{c.hex.toUpperCase()}</span>
+      {look.tips.length > 0 && (
+        <section className="tips">
+          <h3 className="stretch">How to wear it</h3>
+          <ol>{look.tips.map((t, i) => <li key={i}>{t}</li>)}</ol>
+        </section>
+      )}
+
+      {look.swaps.length > 0 && (
+        <section className="swaps">
+          <h3 className="stretch">Swap it</h3>
+          {look.swaps.map((s, i) => {
+            const it = index.get(s.id);
+            const was = index.get(s.replaces);
+            if (!it?.attrs) return null;
+            return (
+              <div key={i} className="swap">
+                <span className="swap-photo"><Photo item={it} /></span>
+                <span>
+                  <strong>{it.attrs.name}</strong>
+                  {was?.attrs && <span className="muted"> instead of the {was.attrs.subtype}</span>}
+                  <span className="hand swap-note">{s.note}</span>
                 </span>
-              ))}
-            </div>
-          </section>
-        )}
+                <button className="btn small ghost swap-try" onClick={() => onOpen({ add: [], swap: [{ out: s.replaces, in: s.id }], remove: [] })}>Try it on</button>
+              </div>
+            );
+          })}
+        </section>
+      )}
 
-        {look.tips.length > 0 && (
-          <section className="tips">
-            <h3 className="stretch">How to wear it</h3>
-            <ol>{look.tips.map((t, i) => <li key={i}>{t}</li>)}</ol>
-          </section>
-        )}
-
-        {look.swaps.length > 0 && (
-          <section className="swaps">
-            <h3 className="stretch">Swap it</h3>
-            {look.swaps.map((s, i) => {
-              const it = index.get(s.id);
-              const was = index.get(s.replaces);
-              if (!it?.attrs) return null;
-              return (
-                <div key={i} className="swap">
-                  <span className="swap-photo"><Photo item={it} /></span>
-                  <span>
-                    <strong>{it.attrs.name}</strong>
-                    {was?.attrs && <span className="muted"> instead of the {was.attrs.subtype}</span>}
-                    <span className="hand swap-note">{s.note}</span>
-                  </span>
-                </div>
-              );
-            })}
-          </section>
-        )}
-
+      <div className="article-end">
+        <button className="folded-note" onClick={() => onOpen()}>
+          <span className="stretch">Second opinion?</span>
+          <span className="hand">Try a piece on, swap one out, or ask me anything about this look.</span>
+          <span className="folded-cta">✎ Pass Cher a note{notes > 0 ? <em> · {notes} so far</em> : null}</span>
+        </button>
         <Stamp score={verdict.score} match={verdict.match} />
       </div>
     </div>
   );
 }
 
-type Placed = { id: string; role: string; note: string; item: Tagged };
-
 /** Paper-doll layout: the outfit assembled roughly where it's worn. */
-function Collage({ pieces }: { pieces: Placed[] }) {
+function Collage({ pieces, isNew, onPick }: { pieces: Placed[]; isNew: (id: string) => boolean; onPick?: (id: string) => void }) {
   const hasOuter = pieces.some((p) => p.role === "outerwear");
   let acc = 0;
+  const placedRoles = new Set<string>();
   const pos = (p: Placed): [number, number, number, number] => {
-    // left %, top %, width %, z
-    switch (p.role) {
+    // left %, top %, width %, z. A second piece in a role (two jackets) joins the side column.
+    const role = placedRoles.has(p.role) ? "accessory" : p.role;
+    placedRoles.add(p.role);
+    switch (role) {
       case "outerwear": return [3, 4, 40, 2];
       case "top": return hasOuter ? [36, 1, 36, 4] : [27, 1, 40, 4];
       case "dress": return hasOuter ? [35, 2, 40, 4] : [25, 2, 44, 4];
@@ -341,7 +442,7 @@ function Collage({ pieces }: { pieces: Placed[] }) {
     }
   };
   return (
-    <div className="collage">
+    <div className={`collage ${onPick ? "pickable" : ""}`}>
       {pieces.map((p, i) => {
         const [left, top, width, z] = pos(p);
         return (
@@ -350,9 +451,10 @@ function Collage({ pieces }: { pieces: Placed[] }) {
             item={p.item}
             tape={i % 2 === 0}
             tilt={tiltFor(p.id, 5)}
-            className="collage-piece"
+            className={`collage-piece ${isNew(p.id) ? "is-new" : ""}`}
             style={{ left: `${left}%`, top: `${top}%`, width: `${width}%`, zIndex: z }}
-            badge={i + 1}
+            badge={isNew(p.id) ? "new" : i + 1}
+            onClick={onPick ? () => onPick(p.id) : undefined}
           />
         );
       })}

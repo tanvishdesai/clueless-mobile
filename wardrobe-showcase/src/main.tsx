@@ -24,6 +24,7 @@ import "./styles/closet.css";
 import "./styles/dress.css";
 import "./styles/ask.css";
 import "./styles/lookbook.css";
+import "./styles/fitting.css";
 
 const url = import.meta.env.VITE_CONVEX_URL as string | undefined;
 // Demo when asked for (npm run demo, ?demo) or when there's no deployment to talk to.

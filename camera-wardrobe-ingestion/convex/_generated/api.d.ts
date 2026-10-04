@@ -10,6 +10,7 @@
 
 import type * as items from "../items.js";
 import type * as looks from "../looks.js";
+import type * as notes from "../notes.js";
 
 import type {
   ApiFromModules,
@@ -20,6 +21,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   items: typeof items;
   looks: typeof looks;
+  notes: typeof notes;
 }>;
 
 /**

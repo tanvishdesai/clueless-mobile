@@ -51,15 +51,17 @@ export const ROLES = [
 ] as const;
 
 // What the stylist writes back. Item ids, not the short refs the model saw.
+const piece = v.object({
+  id: v.id("items"),
+  role: v.string(),              // ROLES
+  note: v.string(),              // margin annotation, a few words
+});
+
 const look = v.object({
   title: v.string(),             // "Monet, But Make It Close-Up"
   tagline: v.string(),           // one line, the pull quote
   direction: v.string(),         // "polished prep", "the bold colour story"
-  pieces: v.array(v.object({
-    id: v.id("items"),
-    role: v.string(),            // ROLES
-    note: v.string(),            // margin annotation, a few words
-  })),
+  pieces: v.array(piece),
   why: v.string(),               // why it works for this occasion
   tips: v.array(v.string()),     // how to wear it: tuck, roll, button
   swaps: v.array(v.object({
@@ -114,6 +116,32 @@ export default defineSchema({
     startedAt: v.optional(v.number()),
     finishedAt: v.optional(v.number()),
   }).index("by_status", ["status"]),
+
+  // The fitting room: notes passed back and forth about one look in a lookbook.
+  // The site writes your note plus a pending reply; the stylist worker fills
+  // the reply in. Threads are per look (lookId + index into result.looks).
+  notes: defineTable({
+    lookId: v.id("looks"),
+    lookIndex: v.number(),
+    author: v.union(v.literal("you"), v.literal("cher")),
+    text: v.string(),
+    // Yours: what you tried on, and the whole outfit you're asking about.
+    change: v.optional(v.object({
+      add: v.array(v.id("items")),
+      swap: v.array(v.object({ out: v.id("items"), in: v.id("items") })),
+      remove: v.array(v.id("items")),
+    })),
+    outfit: v.optional(v.array(v.object({ id: v.id("items"), role: v.string() }))),
+    // Hers: written by the worker.
+    status: v.optional(v.union(
+      v.literal("pending"), v.literal("writing"), v.literal("done"), v.literal("error"),
+    )),
+    verdict: v.optional(v.string()),   // "yes" | "no" | "depends"
+    proposal: v.optional(v.object({ title: v.string(), pieces: v.array(piece) })),
+    error: v.optional(v.string()),
+  })
+    .index("by_look", ["lookId", "lookIndex"])
+    .index("by_status", ["status"]),
 
   // Liveness for the stylist worker, so the site can say "the stylist's computer
   // is off" instead of spinning forever.

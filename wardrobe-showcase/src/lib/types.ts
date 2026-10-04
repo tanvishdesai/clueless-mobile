@@ -76,3 +76,27 @@ export type LookRequest = {
 export type Heartbeat = { lastSeen: number; model: string; busy: boolean } | null;
 
 export const FORMALITY = ["loungewear", "casual", "smart-casual", "business", "formal"] as const;
+
+/** What you tried on in the fitting room, relative to what was on the collage. */
+export type Change = {
+  add: string[];
+  swap: { out: string; in: string }[];
+  remove: string[];
+};
+
+export type Proposal = { title: string; pieces: Piece[] };
+
+export type Note = {
+  _id: string;
+  _creationTime: number;
+  lookId: string;
+  lookIndex: number;
+  author: "you" | "cher";
+  text: string;
+  change?: Change;
+  outfit?: { id: string; role: string }[];
+  status?: "pending" | "writing" | "done" | "error";
+  verdict?: "yes" | "no" | "depends" | string;
+  proposal?: Proposal;
+  error?: string;
+};
