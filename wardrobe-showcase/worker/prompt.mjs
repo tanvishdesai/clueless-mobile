@@ -33,7 +33,7 @@ Writing:
 - read: one or two sentences on how you read the brief.
 - gaps: one sentence naming a piece the owner doesn't have that would make this occasion easier, or an empty string if the closet has it covered.
 
-Don't assume the owner's gender or body; dress the closet you've been given.`;
+Don't assume the owner's gender or body; dress the closet you've been given. If you're told their name, you may use it once, the way a friend would; don't put it in every look.`;
 
 /** Short, stable refs keep the prompt small and give the schema a closed set to choose from. */
 export function catalogue(items) {
@@ -136,7 +136,7 @@ export function schema(refs) {
 export function brief(req, cat) {
   const anchors = (req.anchorIds ?? []).map((id) => cat.idToRef.get(id)).filter(Boolean);
   const today = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-  return `Today is ${today}.
+  return `Today is ${today}.${req.by ? `\nYou're dressing ${req.by}.` : ""}
 
 WHERE THEY'RE GOING
 ${req.occasion}
@@ -173,4 +173,104 @@ export function resolve(out, cat) {
 
   if (!looks.length) throw new Error("no wearable look came back");
   return { read: String(out.read ?? ""), gaps: String(out.gaps ?? ""), looks };
+}
+
+// ── The fitting room: replying to a note about one look ─────────────────────
+
+export const NOTE_SYSTEM = `You are a personal stylist. Earlier you put together a lookbook for an occasion from the owner's own closet. Now they're passing you notes about one of those looks: trying a piece on, swapping one out, or asking a question. You get the brief, the look, the conversation so far, their new note, the outfit they're asking about, and the full closet.
+
+Reply like a note passed back in class: two to four sentences, warm and decisive, about the actual pieces - colour (judge it from the hex values), fabric, proportion, formality, and what the occasion needs. Honest beats agreeable. If their idea works, say why. If it doesn't, say so plainly and give them the better move from their own closet.
+
+verdict: "yes" if they should do it, "no" if they shouldn't, "depends" if it only works under a condition you name in the reply. For a question with no change attached, pick the verdict that answers it.
+
+look: the complete outfit you would now tell them to wear for this occasion, with a role and a margin note of at most ten words for each piece. If you agree with what they're asking about, that's their outfit. If not, it's your better alternative, which can be the original look. title names that outfit in a few words.
+
+Use only refs from the catalogue. The owner's rules from the brief still apply. If you know their name, you can open with it now and then, as a note to a friend would. Don't assume the owner's gender or body. The site is a homage to Clueless (1995); a wink at it now and then is fine, never at the expense of the advice.`;
+
+export function noteSchema(refs) {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["verdict", "reply", "look"],
+    properties: {
+      verdict: { type: "string", enum: ["yes", "no", "depends"] },
+      reply: { type: "string" },
+      look: {
+        type: "object",
+        additionalProperties: false,
+        required: ["title", "pieces"],
+        properties: {
+          title: { type: "string" },
+          pieces: {
+            type: "array",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["ref", "role", "note"],
+              properties: {
+                ref: { type: "string", enum: refs },
+                role: { type: "string", enum: ROLES },
+                note: { type: "string" },
+              },
+            },
+          },
+        },
+      },
+    },
+  };
+}
+
+/** How a tried-on change reads in the prompt: "add I14 (denim jacket); swap I05 (watch) for I22 (silver watch)". */
+function describeChange(change, cat, nameOf) {
+  if (!change) return "";
+  const r = (id) => `${cat.idToRef.get(id) ?? "?"} (${nameOf(id)})`;
+  return [
+    ...change.add.map((id) => `add ${r(id)}`),
+    ...change.swap.map((s) => `swap ${r(s.out)} for ${r(s.in)}`),
+    ...change.remove.map((id) => `take off ${r(id)}`),
+  ].join("; ");
+}
+
+export function noteBrief({ note, request, thread }, items, cat) {
+  const look = request.result.looks[note.lookIndex];
+  const byId = new Map(items.map((it) => [it._id, it]));
+  const nameOf = (id) => byId.get(id)?.attrs?.name ?? "a piece no longer in the closet";
+  const ref = (id) => cat.idToRef.get(id) ?? "?";
+  const yours = thread.filter((n) => n.author === "you").at(-1);
+  const history = thread.slice(0, -1);
+  const line = (n) => n.author === "you"
+    ? `THEM: ${n.text || "(no words, just tried something on)"}${n.change ? `\n  tried: ${describeChange(n.change, cat, nameOf)}` : ""}`
+    : n.status === "done" ? `YOU (${n.verdict}): ${n.text}` : null;
+  const today = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+
+  return `Today is ${today}.${request.by ? `\nYou're writing to ${request.by}.` : ""}
+
+THE BRIEF
+${request.occasion}
+Rules: ${request.constraints || "(none given)"}
+
+THE LOOK YOU PUT TOGETHER: "${look.title}"
+${look.pieces.map((p) => `${ref(p.id)} ${nameOf(p.id)} - ${p.role} - "${p.note}"`).join("\n")}
+Why: ${look.why}
+${history.length ? `\nTHE CONVERSATION SO FAR\n${history.map(line).filter(Boolean).join("\n")}\n` : ""}
+THEIR NEW NOTE
+${yours?.text || "(no words, just tried something on)"}${yours?.change ? `\nTried: ${describeChange(yours.change, cat, nameOf)}` : ""}
+
+THE OUTFIT THEY'RE ASKING ABOUT
+${(yours?.outfit ?? look.pieces).map((p) => `${ref(p.id)} ${nameOf(p.id)} - ${p.role}`).join("\n")}
+
+THE CLOSET
+${cat.text}`;
+}
+
+export function resolveNote(out, cat) {
+  const verdict = ["yes", "no", "depends"].includes(out?.verdict) ? out.verdict : "depends";
+  const text = String(out?.reply ?? "").trim();
+  if (!text) throw new Error("Cher's note came back blank");
+  const seen = new Set();
+  const pieces = (out.look?.pieces ?? [])
+    .filter((p) => cat.refToId.has(p.ref) && ROLES.includes(p.role) && !seen.has(p.ref) && seen.add(p.ref))
+    .map((p) => ({ id: cat.refToId.get(p.ref), role: p.role, note: String(p.note ?? "") }));
+  const proposal = pieces.length >= 2 ? { title: String(out.look.title ?? "Her version"), pieces } : undefined;
+  return { text, verdict, proposal };
 }

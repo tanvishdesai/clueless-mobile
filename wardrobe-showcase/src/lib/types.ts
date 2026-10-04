@@ -63,6 +63,7 @@ export type LookRequest = {
   _creationTime: number;
   occasion: string;
   constraints: string;
+  by?: string;
   anchorIds?: string[];
   status: "pending" | "styling" | "done" | "error";
   error?: string;
@@ -76,3 +77,34 @@ export type LookRequest = {
 export type Heartbeat = { lastSeen: number; model: string; busy: boolean } | null;
 
 export const FORMALITY = ["loungewear", "casual", "smart-casual", "business", "formal"] as const;
+
+/** What you tried on in the fitting room, relative to what was on the collage. */
+export type Change = {
+  add: string[];
+  swap: { out: string; in: string }[];
+  remove: string[];
+};
+
+export type Proposal = { title: string; pieces: Piece[] };
+
+export type Note = {
+  _id: string;
+  _creationTime: number;
+  lookId: string;
+  lookIndex: number;
+  author: "you" | "cher";
+  text: string;
+  change?: Change;
+  outfit?: { id: string; role: string }[];
+  status?: "pending" | "writing" | "done" | "error";
+  verdict?: "yes" | "no" | "depends" | string;
+  proposal?: Proposal;
+  error?: string;
+};
+
+/** The signed-in person. `member` is false for an account that isn't allowed into this closet. */
+export type Me = { name: string; email: string; member: boolean };
+
+/** "Tanvish’s", "James’" */
+export const possessive = (name: string) => `${name}’${/s$/i.test(name) ? "" : "s"}`;
+export const firstName = (name: string) => name.trim().split(/\s+/)[0] || name;

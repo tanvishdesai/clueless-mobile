@@ -5,13 +5,14 @@ import {
 } from "react-native";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "./convex/_generated/api";
+import { closetKey } from "./convexClient";
 
 type Item = NonNullable<ReturnType<typeof useQuery<typeof api.items.list>>>[number];
 
 const ALL = "all";
 
 export default function Closet() {
-  const items = useQuery(api.items.list);
+  const items = useQuery(api.items.list, { key: closetKey });
   const retry = useMutation(api.items.retry);
   const remove = useMutation(api.items.remove);
   const [filter, setFilter] = useState(ALL);
@@ -127,14 +128,14 @@ export default function Closet() {
               {open.status !== "pending" ? (
                 <Pressable
                   style={s.action}
-                  onPress={() => { void retry({ id: open._id }); setOpen(null); }}
+                  onPress={() => { void retry({ id: open._id, key: closetKey }); setOpen(null); }}
                 >
                   <Text style={s.actionText}>Re-tag</Text>
                 </Pressable>
               ) : null}
               <Pressable
                 style={[s.action, s.danger]}
-                onPress={() => { void remove({ id: open._id }); setOpen(null); }}
+                onPress={() => { void remove({ id: open._id, key: closetKey }); setOpen(null); }}
               >
                 <Text style={[s.actionText, s.dangerText]}>Delete</Text>
               </Pressable>

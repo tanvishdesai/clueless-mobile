@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useData } from "./lib/data";
 import { APPS, go, useRoute, type App as AppName } from "./lib/route";
-import { isTagged } from "./lib/types";
+import { firstName, isTagged, possessive } from "./lib/types";
 import { MenuBar, WALLPAPERS, type Wallpaper } from "./components/MenuBar";
 import { APP_ICON, APP_LABEL, MoonIcon } from "./components/Icons";
 import { Window } from "./components/Window";
@@ -25,6 +25,11 @@ function loadWallpaper(): Wallpaper {
 
 export default function App() {
   const route = useRoute();
+  const { me } = useData();
+
+  useEffect(() => {
+    document.title = `${possessive(firstName(me.name))} closet · Clueless`;
+  }, [me.name]);
   const [wallpaper, setWallpaperState] = useState<Wallpaper>(loadWallpaper);
   const [saver, setSaver] = useState(false);
 
@@ -56,7 +61,7 @@ export default function App() {
       </main>
       <TabBar app={route.app} />
       {route.app === "closet" && route.id && <Boundary><ItemFile id={route.id} /></Boundary>}
-      {saver && <Screensaver onWake={wake} />}
+      {saver && <Screensaver onWake={wake} name={me.name} />}
     </div>
   );
 }

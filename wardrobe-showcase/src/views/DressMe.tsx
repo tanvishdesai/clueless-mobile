@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useData } from "../lib/data";
 import { go, useRoute } from "../lib/route";
-import { isTagged, type Tagged } from "../lib/types";
+import { firstName, isTagged, type Tagged } from "../lib/types";
 import { judge } from "../lib/match";
 import { colorSortKey, close as sameColour, inkOn } from "../lib/color";
 import { Photo } from "../components/Polaroid";
@@ -25,7 +25,7 @@ const byColour = (a: Tagged, b: Tagged) => colorSortKey(a.attrs.primaryHex) - co
  * verdict. "MIS-MATCH" in red if you got it wrong.
  */
 export function DressMe() {
-  const { items } = useData();
+  const { items, me } = useData();
   const { query } = useRoute();
   const wear = query.get("wear");
 
@@ -109,7 +109,7 @@ export function DressMe() {
     <div className="dress">
       <div className="crt" aria-label="Wardrobe screen">
         <div className="crt-head mono">
-          <span>WARDROBE 1.995</span>
+          <span>WARDROBE 1.995 · {firstName(me.name).toUpperCase()}</span>
           <span>◀ ▶ to browse · ▲ ▼ to pick a row</span>
         </div>
         {SLOTS.map((s) => {

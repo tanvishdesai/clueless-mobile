@@ -1,16 +1,20 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "./api";
-import { isTagged, type Item, type LookRequest } from "./types";
+import { isTagged, type Change, type Item, type Look, type LookRequest, type Me, type Note, type Piece } from "./types";
 import { DEMO_ITEMS, DEMO_LOOKS } from "../demo/closet";
-import { demoStyle } from "../demo/stylist";
+import { demoNote, demoStyle } from "../demo/stylist";
 
 export type Stylist = { online: boolean; busy: boolean; model?: string };
 
 export type RequestArgs = { occasion: string; constraints: string; anchorIds?: string[] };
+export type NoteArgs = { lookId: string; lookIndex: number; text: string; change?: Change; outfit?: { id: string; role: string }[] };
 
 type Data = {
   mode: "live" | "demo";
+  /** Who's signed in; the username personalises the whole site. */
+  me: Me;
+  signOut: () => Promise<void>;
   items: Item[] | undefined;
   looks: LookRequest[] | undefined;
   stylist: Stylist | undefined;
@@ -18,6 +22,11 @@ type Data = {
   retry: (id: string) => Promise<unknown>;
   setFavorite: (id: string, favorite: boolean) => Promise<unknown>;
   remove: (id: string) => Promise<unknown>;
+  notes: Note[] | undefined;
+  sendNote: (args: NoteArgs) => Promise<unknown>;
+  retryNote: (id: string) => Promise<unknown>;
+  /** Keep a fitting-room version as a new look in the lookbook; resolves to its index. */
+  keepLook: (lookId: string, look: Look) => Promise<number>;
 };
 
 const Ctx = createContext<Data | null>(null);
@@ -38,7 +47,7 @@ function useNow(every = 5000) {
   return now;
 }
 
-export function LiveData({ children }: { children: ReactNode }) {
+export function LiveData({ me, signOut, children }: { me: Me; signOut: () => Promise<void>; children: ReactNode }) {
   const items = useQuery(api.items.list, {});
   const looks = useQuery(api.looks.list, {});
   const beat = useQuery(api.looks.stylist, {});
@@ -46,6 +55,10 @@ export function LiveData({ children }: { children: ReactNode }) {
   const retry = useMutation(api.looks.retry);
   const setFavorite = useMutation(api.looks.setFavorite);
   const remove = useMutation(api.looks.remove);
+  const notes = useQuery(api.notes.list, {});
+  const sendNote = useMutation(api.notes.send);
+  const retryNote = useMutation(api.notes.retry);
+  const addLook = useMutation(api.looks.addLook);
   const now = useNow();
 
   const stylist = useMemo<Stylist | undefined>(() => {
@@ -57,6 +70,8 @@ export function LiveData({ children }: { children: ReactNode }) {
 
   const value = useMemo<Data>(() => ({
     mode: "live",
+    me,
+    signOut,
     items,
     looks,
     stylist,
@@ -64,14 +79,21 @@ export function LiveData({ children }: { children: ReactNode }) {
     retry: (id) => retry({ id }),
     setFavorite: (id, favorite) => setFavorite({ id, favorite }),
     remove: (id) => remove({ id }),
-  }), [items, looks, stylist, request, retry, setFavorite, remove]);
+    notes,
+    sendNote: (args) => sendNote(args),
+    retryNote: (id) => retryNote({ id }),
+    keepLook: (id, look) => addLook({ id, look }),
+  }), [me, signOut, items, looks, stylist, request, retry, setFavorite, remove, notes, sendNote, retryNote, addLook]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
+const DEMO_ME: Me = { name: "Cher", email: "cher@bronsonalcott.edu", member: true };
+
 /** Cher's closet and a stand-in stylist, entirely in memory. */
 export function DemoData({ children }: { children: ReactNode }) {
   const [looks, setLooks] = useState<LookRequest[]>(DEMO_LOOKS);
+  const [notes, setNotes] = useState<Note[]>([]);
   const [busy, setBusy] = useState(false);
   const timers = useRef<number[]>([]);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
@@ -79,6 +101,22 @@ export function DemoData({ children }: { children: ReactNode }) {
   const patch = useCallback((id: string, p: Partial<LookRequest>) => {
     setLooks((ls) => ls.map((l) => (l._id === id ? { ...l, ...p } : l)));
   }, []);
+
+  const patchNote = useCallback((id: string, p: Partial<Note>) => {
+    setNotes((ns) => ns.map((n) => (n._id === id ? { ...n, ...p } : n)));
+  }, []);
+
+  /** The stand-in reads what you tried on, not what you wrote. */
+  const answer = useCallback((reply: Note, mine: Note | undefined, look: Look | undefined) => {
+    const later = (ms: number, fn: () => void) => timers.current.push(window.setTimeout(fn, ms));
+    later(600, () => { setBusy(true); patchNote(reply._id, { status: "writing" }); });
+    later(2600, () => {
+      setBusy(false);
+      const before: Piece[] = look?.pieces ?? [];
+      const after: Piece[] = (mine?.outfit ?? before).map((p) => ({ note: before.find((b) => b.id === p.id)?.note ?? "", ...p }));
+      patchNote(reply._id, { status: "done", ...demoNote(DEMO_ITEMS.filter(isTagged), before, after, !!mine?.change) });
+    });
+  }, [patchNote]);
 
   const run = useCallback((req: LookRequest) => {
     const later = (ms: number, fn: () => void) => timers.current.push(window.setTimeout(fn, ms));
@@ -99,6 +137,8 @@ export function DemoData({ children }: { children: ReactNode }) {
 
   const value = useMemo<Data>(() => ({
     mode: "demo",
+    me: DEMO_ME,
+    signOut: async () => {},
     items: DEMO_ITEMS,
     looks,
     stylist: { online: true, busy, model: "demo stylist" },
@@ -106,6 +146,7 @@ export function DemoData({ children }: { children: ReactNode }) {
       const req: LookRequest = {
         _id: `demo_${Date.now().toString(36)}`,
         _creationTime: Date.now(),
+        by: DEMO_ME.name,
         occasion: occasion.trim(),
         constraints: constraints.trim(),
         anchorIds,
@@ -122,8 +163,32 @@ export function DemoData({ children }: { children: ReactNode }) {
       run(req);
     },
     setFavorite: async (id, favorite) => patch(id, { favorite }),
-    remove: async (id) => setLooks((ls) => ls.filter((l) => l._id !== id)),
-  }), [looks, busy, run, patch]);
+    remove: async (id) => {
+      setLooks((ls) => ls.filter((l) => l._id !== id));
+      setNotes((ns) => ns.filter((n) => n.lookId !== id));
+    },
+    notes,
+    sendNote: async ({ lookId, lookIndex, text, change, outfit }) => {
+      const t = Date.now();
+      const mine: Note = { _id: `note_${t.toString(36)}`, _creationTime: t, lookId, lookIndex, author: "you", text: text.trim(), change, outfit };
+      const reply: Note = { _id: `note_${t.toString(36)}_c`, _creationTime: t + 1, lookId, lookIndex, author: "cher", text: "", status: "pending" };
+      setNotes((ns) => [reply, mine, ...ns]);
+      answer(reply, mine, looks.find((l) => l._id === lookId)?.result?.looks[lookIndex]);
+    },
+    retryNote: async (id) => {
+      const reply = notes.find((n) => n._id === id);
+      if (!reply) return;
+      const mine = notes.find((n) => n.author === "you" && n.lookId === reply.lookId && n._creationTime < reply._creationTime);
+      patchNote(id, { status: "pending", error: undefined });
+      answer(reply, mine, looks.find((l) => l._id === reply.lookId)?.result?.looks[reply.lookIndex]);
+    },
+    keepLook: async (lookId, look) => {
+      const req = looks.find((l) => l._id === lookId);
+      if (!req?.result) throw new Error("that lookbook isn't finished");
+      patch(lookId, { result: { ...req.result, looks: [...req.result.looks, look] } });
+      return req.result.looks.length;
+    },
+  }), [looks, busy, run, patch, notes, answer, patchNote]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

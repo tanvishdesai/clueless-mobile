@@ -1,5 +1,11 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { requireKey, requireMember } from "./access";
+
+// The website signs in (requireMember); the stylist worker presents the closet
+// key (requireKey). Nothing here is reachable anonymously, so nobody else can
+// queue work for Opus.
+const key = v.optional(v.string());
 
 /**
  * Outfit requests for the wardrobe showcase (../wardrobe-showcase).
@@ -19,34 +25,48 @@ export const request = mutation({
     anchorIds: v.optional(v.array(v.id("items"))),
   },
   handler: async (ctx, { occasion, constraints, anchorIds }) => {
+    const userId = await requireMember(ctx);
+    const by = (await ctx.db.get(userId))?.name;
     const o = occasion.trim();
     if (!o) throw new Error("tell the stylist where you're going");
     return ctx.db.insert("looks", {
       occasion: o.slice(0, 600),
       constraints: constraints.trim().slice(0, 1200),
       anchorIds: anchorIds?.length ? anchorIds.slice(0, 4) : undefined,
+      by,
       status: "pending",
     });
   },
 });
 
 /** The lookbook archive, newest first. */
-export const list = query(async (ctx) => ctx.db.query("looks").order("desc").take(60));
+export const list = query(async (ctx) => {
+  await requireMember(ctx);
+  return ctx.db.query("looks").order("desc").take(60);
+});
 
 export const get = query({
   args: { id: v.id("looks") },
-  handler: async (ctx, { id }) => ctx.db.get(id),
+  handler: async (ctx, { id }) => {
+    await requireMember(ctx);
+    return ctx.db.get(id);
+  },
 });
 
 /** The stylist worker's queue, oldest first. */
-export const pending = query(async (ctx) =>
-  ctx.db.query("looks").withIndex("by_status", (q) => q.eq("status", "pending")).take(10),
-);
+export const pending = query({
+  args: { key },
+  handler: async (ctx, { key }) => {
+    requireKey(key);
+    return ctx.db.query("looks").withIndex("by_status", (q) => q.eq("status", "pending")).take(10);
+  },
+});
 
 /** Worker takes a request. False if someone else already did. */
 export const claim = mutation({
-  args: { id: v.id("looks"), model: v.string() },
-  handler: async (ctx, { id, model }) => {
+  args: { id: v.id("looks"), model: v.string(), key },
+  handler: async (ctx, { id, model, key }) => {
+    requireKey(key);
     const row = await ctx.db.get(id);
     if (!row || row.status !== "pending") return false;
     await ctx.db.patch(id, { status: "styling", model, startedAt: Date.now() });
@@ -56,8 +76,9 @@ export const claim = mutation({
 
 /** Worker writes the lookbook (or the failure) back. */
 export const finish = mutation({
-  args: { id: v.id("looks"), result: v.optional(v.any()), error: v.optional(v.string()) },
-  handler: async (ctx, { id, result, error }) => {
+  args: { id: v.id("looks"), result: v.optional(v.any()), error: v.optional(v.string()), key },
+  handler: async (ctx, { id, result, error, key }) => {
+    requireKey(key);
     const finishedAt = Date.now();
     if (error || !result) {
       return ctx.db.patch(id, {
@@ -74,23 +95,48 @@ export const finish = mutation({
 /** Put a failed or stuck request back in the queue. */
 export const retry = mutation({
   args: { id: v.id("looks") },
-  handler: async (ctx, { id }) =>
-    ctx.db.patch(id, { status: "pending", error: undefined, result: undefined }),
+  handler: async (ctx, { id }) => {
+    await requireMember(ctx);
+    await ctx.db.patch(id, { status: "pending", error: undefined, result: undefined });
+  },
 });
 
 export const setFavorite = mutation({
   args: { id: v.id("looks"), favorite: v.boolean() },
-  handler: async (ctx, { id, favorite }) => ctx.db.patch(id, { favorite }),
+  handler: async (ctx, { id, favorite }) => {
+    await requireMember(ctx);
+    await ctx.db.patch(id, { favorite });
+  },
 });
 
 export const remove = mutation({
   args: { id: v.id("looks") },
-  handler: async (ctx, { id }) => ctx.db.delete(id),
+  handler: async (ctx, { id }) => {
+    await requireMember(ctx);
+    const notes = await ctx.db.query("notes").withIndex("by_look", (q) => q.eq("lookId", id)).collect();
+    for (const n of notes) await ctx.db.delete(n._id);
+    await ctx.db.delete(id);
+  },
+});
+
+/** "Keep this version" from the fitting room: add a look to a finished lookbook. */
+export const addLook = mutation({
+  args: { id: v.id("looks"), look: v.any() },
+  handler: async (ctx, { id, look }) => {
+    await requireMember(ctx);
+    const row = await ctx.db.get(id);
+    if (!row?.result) throw new Error("that lookbook isn't finished");
+    if (row.result.looks.length >= 9) throw new Error("this issue is full - nine looks is plenty");
+    // The table validator checks the look's shape on write.
+    await ctx.db.patch(id, { result: { ...row.result, looks: [...row.result.looks, look] } });
+    return row.result.looks.length;
+  },
 });
 
 export const heartbeat = mutation({
-  args: { model: v.string(), busy: v.boolean() },
-  handler: async (ctx, { model, busy }) => {
+  args: { model: v.string(), busy: v.boolean(), key },
+  handler: async (ctx, { model, busy, key }) => {
+    requireKey(key);
     const row = await ctx.db
       .query("heartbeats")
       .withIndex("by_worker", (q) => q.eq("worker", STYLIST_WORKER))
@@ -105,9 +151,10 @@ export const heartbeat = mutation({
  * When the stylist last checked in. Queries can't read the clock reactively,
  * so the client compares `lastSeen` against its own time.
  */
-export const stylist = query(async (ctx) =>
-  ctx.db
+export const stylist = query(async (ctx) => {
+  await requireMember(ctx);
+  return ctx.db
     .query("heartbeats")
     .withIndex("by_worker", (q) => q.eq("worker", STYLIST_WORKER))
-    .unique(),
-);
+    .unique();
+});

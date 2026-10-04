@@ -117,3 +117,47 @@ export function demoStyle(closet: Tagged[], req: Pick<LookRequest, "occasion" | 
     looks,
   };
 }
+
+/**
+ * The demo's fitting-room replies: judge the outfit before and after what you
+ * tried on, and answer from the MATCH checker's notes. The real Cher reads the
+ * words too; this one only has eyes.
+ */
+export function demoNote(
+  closet: Tagged[],
+  before: Piece[],
+  after: Piece[],
+  tried: boolean,
+): { text: string; verdict: "yes" | "no" | "depends"; proposal?: { title: string; pieces: Piece[] } } {
+  const items = (ps: Piece[]) => ps.map((p) => closet.find((c) => c._id === p.id)).filter(Boolean) as Tagged[];
+  if (!tried) {
+    return {
+      verdict: "depends",
+      text: "I'm the demo stand-in, so I can only judge what you try on. Click a piece on the left to swap it, or pull something off the rack, and pass me the note again. The real Cher (Claude Opus 5.5) reads every word.",
+    };
+  }
+  const was = judge(items(before));
+  const now = judge(items(after));
+  const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
+  const good = now.notes.filter((n) => n.ok).map((n) => cap(n.text));
+  const bad = now.notes.filter((n) => !n.ok).map((n) => cap(n.text));
+  if (now.match && now.score >= was.score - 6) {
+    return {
+      verdict: "yes",
+      text: `Totally. ${good.slice(0, 2).join(" ")} It scores ${now.score} against ${was.score} for the original.`,
+      proposal: { title: "Your version", pieces: after.map((p) => ({ ...p, note: p.note || "your call, and a good one" })) },
+    };
+  }
+  if (!now.match) {
+    return {
+      verdict: "no",
+      text: `As if. ${bad.slice(0, 2).join(" ")} I'd stay with what we had.`,
+      proposal: { title: "Back to the original", pieces: before },
+    };
+  }
+  return {
+    verdict: "depends",
+    text: `It works, just not as well: ${now.score} against ${was.score}. ${bad[0] ?? good[0] ?? ""} Wear it if you love that piece.`,
+    proposal: { title: "Your version", pieces: after.map((p) => ({ ...p, note: p.note || "only if you love it" })) },
+  };
+}

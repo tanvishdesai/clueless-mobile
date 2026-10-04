@@ -1,0 +1,48 @@
+/* ── The door: sign in on the same 1995 desktop ─────────────────────────── */
+
+.gate-surface { padding: 26px; align-items: center; }
+.gate-window { width: min(440px, 100%); }
+.gate-body { display: flex; flex-direction: column; gap: 14px; padding: 26px 30px 24px; }
+.gate-center { display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; }
+.gate-greet { margin: 0; max-width: 34ch; color: var(--ink-2); font-size: 15px; line-height: 1.45; }
+.gate-title { margin: 0; font: italic 600 34px/1 var(--f-serif); }
+.gate-status { margin: 0; font-size: 20px; color: var(--ink-2); }
+.gate-tabs { align-self: center; margin: 4px 0 2px; }
+.gate-tabs button { padding: 7px 18px; font-size: 14px; }
+.gate-field { display: flex; flex-direction: column; gap: 8px; }
+.gate-field .stretch { font-size: 10px; color: var(--ink-2); }
+.gate-field .field { padding: 9px 10px; font-size: 15px; }
+.gate-hint { color: var(--ink-3); font-size: 12px; margin-top: -2px; }
+.gate-error { margin: 0; box-shadow: none; }
+.gate-submit { width: 100%; margin-top: 6px; }
+.gate-fine { margin: 0; text-align: center; font: 400 15px/1.4 var(--f-hand); color: #1c3a78; }
+.gate-surface .barber { width: 220px; }
+
+/* The menu bar's user item: initial in a little yellow ellipse, then the name. */
+.user-menu { position: relative; }
+.user-btn {
+  display: flex; align-items: center; gap: 7px;
+  padding: 4px 9px; background: none; border: 0;
+  font: 500 14px/1 var(--f-sys);
+}
+.user-btn:hover, .user-btn[aria-expanded="true"] { background: var(--ink); color: var(--paper); }
+.user-mark {
+  display: grid; place-items: center;
+  width: 22px; height: 18px; border-radius: 50%;
+  background: var(--yellow); color: var(--ink);
+  border: 1px solid var(--ink);
+  font: 400 12px/1 var(--f-logo);
+}
+.user-name { max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
+.menu-pop.right { right: 0; left: auto; }
+.menu-who { display: flex; flex-direction: column; gap: 3px; padding: 8px 16px 6px; }
+.menu-who strong { font-weight: 600; }
+.menu-who span { font: 400 12.5px/1.2 var(--f-sans); color: var(--ink-3); }
+.menu-pop button:disabled { color: var(--ink-3); cursor: default; background: none; }
+
+@media (max-width: 860px) {
+  .gate-surface { padding: 12px 10px; align-items: flex-start; }
+  .gate-body { padding: 20px 18px; }
+  .user-name { display: none; }
+  .user-btn { padding: 4px 6px; }
+}

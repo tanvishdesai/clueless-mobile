@@ -71,6 +71,9 @@ matching will actually need.
 | `convex/schema.ts` | tables + the closed-set enums |
 | `convex/items.ts` | upload URLs, create, list, pending, vocab, saveTags, retry, delete |
 | `convex/looks.ts` | the showcase's outfit requests, lookbooks and stylist heartbeat |
+| `convex/notes.ts` | the showcase's fitting-room threads: notes about one look |
+| `convex/access.ts` | who may call what: signed-in members, or the closet key |
+| `convex/auth.ts`, `http.ts`, `users.ts` | website accounts (Convex Auth, password) |
 | `worker/ingest.mjs` | the Sonnet 5 call, via the Claude Agent SDK |
 | `Capture.tsx` | camera; front → back → fire-and-forget upload |
 | `Closet.tsx` | grid, category filter, detail sheet |
@@ -80,6 +83,7 @@ matching will actually need.
 
 ```sh
 npx convex dev          # backend, watches convex/
+npm test                # access rules, against an in-process Convex
 npm run ingest:watch    # tagging worker
 npx expo start          # Metro, for the dev client
 npx tsc --noEmit        # typecheck
@@ -111,6 +115,10 @@ Via EAS instead:
 ```sh
 npx eas-cli build --platform android --profile preview
 ```
+
+Once `CLOSET_KEY` is set on the deployment, the app and the ingest worker need
+the same key (`EXPO_PUBLIC_CLOSET_KEY` and `CLOSET_KEY` in `.env.local`; see
+`.env.example` and the root README). Rebuild the APK after setting it.
 
 `EXPO_PUBLIC_CONVEX_URL` lives in `eas.json` under each build profile — `.env.local`
 is gitignored and never reaches EAS, so the URL has to be baked in there.
