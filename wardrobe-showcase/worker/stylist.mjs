@@ -5,13 +5,16 @@
  * Same harness as the ingest worker (../camera-wardrobe-ingestion/worker): the
  * Claude Agent SDK, spending a `claude setup-token` credential. That credential
  * only works through the Agent SDK, and the Agent SDK spawns the Claude Code CLI,
- * which a Convex action can't do - so this runs on your machine and the website
- * just queues requests.
+ * which a Convex action can't do - so the model call lives in this process, not
+ * in the backend. The process itself can run anywhere Node can.
  *
  *   npm run stylist          # style everything queued, then exit
- *   npm run stylist:watch    # keep listening (npm run dev starts this for you)
+ *   npm run stylist:watch    # poll for work (npm run dev starts this for you)
+ *   npm run stylist:serve    # wait for Convex to wake us (hosted; see README)
  */
 
+import { createServer } from "node:http";
+import { timingSafeEqual } from "node:crypto";
 import { ConvexHttpClient } from "convex/browser";
 import { anyApi } from "convex/server";
 import { query } from "@anthropic-ai/claude-agent-sdk";
@@ -25,6 +28,7 @@ const TOKEN = process.env.CLAUDE_CODE_OAUTH_TOKEN;
 // The backend only lets the stylist in with the closet key (see convex/access.ts).
 const KEY = process.env.CLOSET_KEY;
 const WATCH = process.argv.includes("--watch");
+const SERVE = process.argv.includes("--serve");
 
 if (!CONVEX_URL || !TOKEN || !KEY) {
   console.error(
@@ -53,9 +57,11 @@ async function style(req) {
       model: MODEL,
       effort: EFFORT,
       systemPrompt: SYSTEM,
-      tools: [],                       // pure reasoning over the catalogue
+      // Search is for an occasion it doesn't know; the closet itself is all in the prompt.
+      tools: ["WebSearch"],
+      allowedTools: ["WebSearch"],
       outputFormat: { type: "json_schema", schema: schema([...cat.refToId.keys()]) },
-      maxTurns: 4,
+      maxTurns: 8,
       settingSources: [],
       persistSession: false,
       env: { ...process.env, CLAUDE_CODE_OAUTH_TOKEN: TOKEN },
@@ -84,9 +90,10 @@ async function reply(noteId) {
       model: MODEL,
       effort: EFFORT,
       systemPrompt: NOTE_SYSTEM,
-      tools: [],
+      tools: ["WebSearch"],
+      allowedTools: ["WebSearch"],
       outputFormat: { type: "json_schema", schema: noteSchema([...cat.refToId.keys()]) },
-      maxTurns: 4,
+      maxTurns: 8,
       settingSources: [],
       persistSession: false,
       env: { ...process.env, CLAUDE_CODE_OAUTH_TOKEN: TOKEN },
@@ -165,7 +172,50 @@ async function drain() {
   }
 }
 
-if (WATCH) {
+/**
+ * One drain at a time: a second wake-up joins the one already running. Checks in
+ * every 10s *while working only* - idle silence is what lets the host sleep, and
+ * it means a stale check-in reliably reads as "not styling" if we die mid-look.
+ */
+let inFlight = null;
+const drainOnce = () => (inFlight ??= (async () => {
+  const ticker = setInterval(beat, 10_000);
+  try {
+    return await drain();
+  } finally {
+    clearInterval(ticker);
+    inFlight = null;
+  }
+})());
+
+const keyOk = (given) =>
+  typeof given === "string" &&
+  given.length === KEY.length &&
+  timingSafeEqual(Buffer.from(given), Buffer.from(KEY));
+
+if (SERVE) {
+  // Hosted mode (Railway). No polling and no heartbeat timer: a service that
+  // talks to Convex on a schedule never goes to sleep, and sleeping is the
+  // whole point. Convex wakes us with a POST when it queues something, so the
+  // only outbound traffic is the work itself.
+  const port = Number(process.env.PORT ?? 8080);
+  createServer((req, res) => {
+    req.resume();                                    // discard any body; don't hold the socket
+    const reply = (code, body) => {
+      res.writeHead(code, { "content-type": "application/json" });
+      res.end(JSON.stringify(body));
+    };
+    if (req.method === "GET") return reply(200, { stylist: MODEL, effort: EFFORT });
+    if (req.method !== "POST") return reply(405, { error: "POST to wake the stylist" });
+    // This endpoint is open to the internet; the closet key is what makes it ours.
+    if (!keyOk(req.headers["x-closet-key"])) return reply(401, { error: "wrong closet key" });
+    // Answer at once and style afterwards: a lookbook takes tens of seconds, and
+    // nobody is waiting on this response. Railway decides to sleep on outbound
+    // traffic, not on open requests, so working after replying keeps us awake.
+    reply(202, { woken: true });
+    drainOnce().catch((e) => console.error(`convex: ${e?.message ?? e}`));
+  }).listen(port, () => console.log(`Stylist on call - ${MODEL}, effort ${EFFORT}, port ${port}.`));
+} else if (WATCH) {
   console.log(`Stylist on duty - ${MODEL}, effort ${EFFORT}. Ctrl+C to clock out.`);
   await beat();
   setInterval(beat, 10_000);
