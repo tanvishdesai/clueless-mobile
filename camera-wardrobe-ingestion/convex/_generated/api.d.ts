@@ -14,6 +14,7 @@ import type * as http from "../http.js";
 import type * as items from "../items.js";
 import type * as looks from "../looks.js";
 import type * as notes from "../notes.js";
+import type * as stylist from "../stylist.js";
 import type * as users from "../users.js";
 
 import type {
@@ -29,6 +30,7 @@ declare const fullApi: ApiFromModules<{
   items: typeof items;
   looks: typeof looks;
   notes: typeof notes;
+  stylist: typeof stylist;
   users: typeof users;
 }>;
 

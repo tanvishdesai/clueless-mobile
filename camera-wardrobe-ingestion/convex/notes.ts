@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import { mutation, query } from "./_generated/server";
 import { requireKey, requireMember } from "./access";
 
@@ -45,7 +46,9 @@ export const send = mutation({
       change: changed ? change : undefined,
       outfit,
     });
-    return ctx.db.insert("notes", { lookId, lookIndex, author: "cher", text: "", status: "pending" });
+    const reply = await ctx.db.insert("notes", { lookId, lookIndex, author: "cher", text: "", status: "pending" });
+    await ctx.scheduler.runAfter(0, internal.stylist.wake, {});
+    return reply;
   },
 });
 
@@ -110,5 +113,6 @@ export const retry = mutation({
   handler: async (ctx, { id }) => {
     await requireMember(ctx);
     await ctx.db.patch(id, { status: "pending", error: undefined });
+    await ctx.scheduler.runAfter(0, internal.stylist.wake, {});
   },
 });

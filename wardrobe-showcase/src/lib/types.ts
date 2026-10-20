@@ -74,7 +74,8 @@ export type LookRequest = {
   finishedAt?: number;
 };
 
-export type Heartbeat = { lastSeen: number; model: string; busy: boolean } | null;
+/** `onDemand`: the stylist is a service Convex wakes, so silence means asleep, not gone. */
+export type Heartbeat = { lastSeen?: number; model?: string; busy?: boolean; onDemand: boolean };
 
 export const FORMALITY = ["loungewear", "casual", "smart-casual", "business", "formal"] as const;
 

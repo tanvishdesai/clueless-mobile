@@ -10,7 +10,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_CONVEX_URL": "https://elegant-owl-354.convex.cloud"
+        "EXPO_PUBLIC_CONVEX_URL": "https://loyal-chickadee-368.convex.cloud"
       }
     },
     "production": {
@@ -19,7 +19,7 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_CONVEX_URL": "https://elegant-owl-354.convex.cloud"
+        "EXPO_PUBLIC_CONVEX_URL": "https://loyal-chickadee-368.convex.cloud"
       }
     }
   }

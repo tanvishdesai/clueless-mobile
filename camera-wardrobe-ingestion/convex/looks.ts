@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import { mutation, query } from "./_generated/server";
 import { requireKey, requireMember } from "./access";
 
@@ -16,6 +17,9 @@ const key = v.optional(v.string());
  * back. The website is subscribed to the row, so the result just appears.
  */
 
+// Deployment environment variables (Convex dashboard → Settings → Environment).
+declare const process: { env: Record<string, string | undefined> };
+
 const STYLIST_WORKER = "stylist";
 
 export const request = mutation({
@@ -29,13 +33,15 @@ export const request = mutation({
     const by = (await ctx.db.get(userId))?.name;
     const o = occasion.trim();
     if (!o) throw new Error("tell the stylist where you're going");
-    return ctx.db.insert("looks", {
+    const id = await ctx.db.insert("looks", {
       occasion: o.slice(0, 600),
       constraints: constraints.trim().slice(0, 1200),
       anchorIds: anchorIds?.length ? anchorIds.slice(0, 4) : undefined,
       by,
       status: "pending",
     });
+    await ctx.scheduler.runAfter(0, internal.stylist.wake, {});
+    return id;
   },
 });
 
@@ -98,6 +104,7 @@ export const retry = mutation({
   handler: async (ctx, { id }) => {
     await requireMember(ctx);
     await ctx.db.patch(id, { status: "pending", error: undefined, result: undefined });
+    await ctx.scheduler.runAfter(0, internal.stylist.wake, {});
   },
 });
 
@@ -153,8 +160,11 @@ export const heartbeat = mutation({
  */
 export const stylist = query(async (ctx) => {
   await requireMember(ctx);
-  return ctx.db
+  const row = await ctx.db
     .query("heartbeats")
     .withIndex("by_worker", (q) => q.eq("worker", STYLIST_WORKER))
     .unique();
+  // A hosted stylist sleeps between jobs, so a stale `lastSeen` is normal and
+  // "offline" would be a lie. `onDemand` tells the site which kind it's got.
+  return { ...row, onDemand: !!process.env.STYLIST_URL };
 });

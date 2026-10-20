@@ -1,9 +1,10 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import schema from "./schema";
 import { mayRegister } from "./access";
+import { wake } from "./stylist";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -131,5 +132,37 @@ describe("the fitting room", () => {
     const ctx = await t.query(api.notes.context, { id: reply, key: "s3cret" });
     expect(ctx?.thread.map((n) => n.text)).toEqual(["What about the jacket?"]);
     expect(ctx?.request?.by).toBe("Tanvish");
+  });
+});
+
+describe("waking the hosted stylist", () => {
+  test("is internal: no client can make the backend hammer the stylist", async () => {
+    // `wake` carries CLOSET_KEY outbound, so it must never become public.
+    // Asserted on the registration itself: convex-test resolves functions by
+    // path and runs internal ones happily, so calling it here proves nothing.
+    expect((wake as unknown as { isInternal: boolean }).isInternal).toBe(true);
+  });
+
+  test("does nothing without STYLIST_URL, so a laptop stylist still polls", async () => {
+    vi.stubEnv("CLOSET_KEY", "s3cret");
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const { t } = await closet();
+    await t.action(internal.stylist.wake, {});
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
+  });
+
+  test("queueing work schedules a wake-up", async () => {
+    const { t, asOwner } = await closet();
+    await asOwner.mutation(api.looks.request, brief);
+    expect(await t.run((ctx) => ctx.db.system.query("_scheduled_functions").collect()))
+      .toHaveLength(1);
+  });
+
+  test("the site is told whether the stylist is one it can wake", async () => {
+    const { asOwner } = await closet();
+    expect(await asOwner.query(api.looks.stylist, {})).toMatchObject({ onDemand: false });
+    vi.stubEnv("STYLIST_URL", "https://stylist.example.com");
+    expect(await asOwner.query(api.looks.stylist, {})).toMatchObject({ onDemand: true });
   });
 });

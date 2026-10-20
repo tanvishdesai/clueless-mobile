@@ -63,9 +63,12 @@ export function LiveData({ me, signOut, children }: { me: Me; signOut: () => Pro
 
   const stylist = useMemo<Stylist | undefined>(() => {
     if (beat === undefined) return undefined;
-    if (!beat) return { online: false, busy: false };
-    // The worker checks in every 10s; give it a couple of misses.
-    return { online: now - beat.lastSeen < 35_000, busy: beat.busy, model: beat.model };
+    // A check-in is only meaningful for ~35s (the worker sends one every 10s
+    // while it's styling; give it a couple of misses).
+    const fresh = !!beat.lastSeen && now - beat.lastSeen < 35_000;
+    // A hosted stylist is on call even while asleep - Convex wakes it. A laptop
+    // one is only there if it just checked in.
+    return { online: beat.onDemand || fresh, busy: fresh && !!beat.busy, model: beat.model };
   }, [beat, now]);
 
   const value = useMemo<Data>(() => ({
