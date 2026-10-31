@@ -6,6 +6,17 @@
 
 export const ROLES = ["outerwear", "top", "underlayer", "bottom", "dress", "footwear", "accessory", "fragrance"];
 
+// Where the owner lives, so "tonight" or "the weekend" has weather to search for.
+const HOME = "They live in Ahmedabad, India: assume that is where they are unless the brief says otherwise.";
+
+// Searches are cheap and memory is stale, so the stylist looks things up by default.
+const SEARCH = `Search the web before you choose. Searches are cheap; a look built on a wrong guess about the weather or the venue is not. Whenever the brief mentions anything specific, look it up:
+- a place (city, neighbourhood, venue, restaurant, trail): the weather forecast for when they'll be there - temperature through the hours they'll be out, rain, wind - and what the place is like: indoor or outdoor, dress code, terrain;
+- an event (a festival, concert, wedding, match, party, launch): its actual date, venue, dress code and what people wear to it;
+- a time ("tonight", "Saturday brunch", "8pm"): pin it down against the current date and time you're given, and use the forecast for those hours, not typical weather for the season;
+- anything else named (a film, show, band, game, team, theme): what it is, so a nod to it can work - a colour, a mood, a character, the team's colours.
+Use what you find only when it's useful to the outfit, and say what you found in "read" (e.g. the forecast you dressed for). If a search turns up nothing reliable, fall back on what you know and say so. Skip searching only for a brief with nothing specific in it ("something for the weekend").`;
+
 export const SYSTEM = `You are a personal stylist dressing one person entirely from their own closet. You are given the full catalogue of what they own and a brief: where they're going, plus any rules. You return a lookbook.
 
 Pieces are referenced by their ref (I01, I02, ...). Use only refs from the catalogue. Never invent a garment, and never describe a piece as something it isn't.
@@ -33,7 +44,7 @@ Writing:
 - read: one or two sentences on how you read the brief.
 - gaps: one sentence naming a piece the owner doesn't have that would make this occasion easier, or an empty string if the closet has it covered.
 
-You can search the web. Do it only when the brief names something you don't reliably know - a specific venue, event, dress code or recent trend - and the answer would change what you pick. Most briefs need no search.
+${SEARCH}
 
 Don't assume the owner's gender or body; dress the closet you've been given. If you're told their name, you may use it once, the way a friend would; don't put it in every look.`;
 
@@ -137,8 +148,7 @@ export function schema(refs) {
 
 export function brief(req, cat) {
   const anchors = (req.anchorIds ?? []).map((id) => cat.idToRef.get(id)).filter(Boolean);
-  const today = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-  return `Today is ${today}.${req.by ? `\nYou're dressing ${req.by}.` : ""}
+  return `It is ${now()}. ${HOME}${req.by ? `\nYou're dressing ${req.by}.` : ""}
 
 WHERE THEY'RE GOING
 ${req.occasion}
@@ -187,7 +197,7 @@ verdict: "yes" if they should do it, "no" if they shouldn't, "depends" if it onl
 
 look: the complete outfit you would now tell them to wear for this occasion, with a role and a margin note of at most ten words for each piece. If you agree with what they're asking about, that's their outfit. If not, it's your better alternative, which can be the original look. title names that outfit in a few words.
 
-Use only refs from the catalogue. The owner's rules from the brief still apply. You can search the web, but only when the brief or note names something you don't reliably know and the answer would change your advice. If you know their name, you can open with it now and then, as a note to a friend would. Don't assume the owner's gender or body. The site is a homage to Clueless (1995); a wink at it now and then is fine, never at the expense of the advice.`;
+Use only refs from the catalogue. The owner's rules from the brief still apply. Search the web whenever the brief or note mentions a place, event, time or anything else specific you'd otherwise be guessing at (the forecast for those hours, the venue, the dress code, what a named film or band is), and use what you find when it changes your advice. If you know their name, you can open with it now and then, as a note to a friend would. Don't assume the owner's gender or body. The site is a homage to Clueless (1995); a wink at it now and then is fine, never at the expense of the advice.`;
 
 export function noteSchema(refs) {
   return {
@@ -243,9 +253,8 @@ export function noteBrief({ note, request, thread }, items, cat) {
   const line = (n) => n.author === "you"
     ? `THEM: ${n.text || "(no words, just tried something on)"}${n.change ? `\n  tried: ${describeChange(n.change, cat, nameOf)}` : ""}`
     : n.status === "done" ? `YOU (${n.verdict}): ${n.text}` : null;
-  const today = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
-  return `Today is ${today}.${request.by ? `\nYou're writing to ${request.by}.` : ""}
+  return `It is ${now()}. ${HOME}${request.by ? `\nYou're writing to ${request.by}.` : ""}
 
 THE BRIEF
 ${request.occasion}
@@ -275,4 +284,12 @@ export function resolveNote(out, cat) {
     .map((p) => ({ id: cat.refToId.get(p.ref), role: p.role, note: String(p.note ?? "") }));
   const proposal = pieces.length >= 2 ? { title: String(out.look.title ?? "Her version"), pieces } : undefined;
   return { text, verdict, proposal };
+}
+
+/** "Saturday 31 October 2026, 18:42 GMT+5:30": the time and zone are what let "tonight" or "8pm" mean something. */
+export function now(d = new Date()) {
+  return d.toLocaleString("en-GB", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric",
+    hour: "2-digit", minute: "2-digit", timeZoneName: "short",
+  });
 }

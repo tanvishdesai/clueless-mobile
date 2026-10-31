@@ -98,12 +98,24 @@ export const finish = mutation({
   },
 });
 
+/** Worker reports what it's thinking or searching, so the site can show it while styling. */
+export const trace = mutation({
+  args: { id: v.id("looks"), lines: v.array(v.string()), key },
+  handler: async (ctx, { id, lines, key }) => {
+    requireKey(key);
+    const row = await ctx.db.get(id);
+    if (row?.status !== "styling") return;
+    const next = [...(row.trace ?? []), ...lines.map((l) => l.slice(0, 300))].slice(-80);
+    await ctx.db.patch(id, { trace: next });
+  },
+});
+
 /** Put a failed or stuck request back in the queue. */
 export const retry = mutation({
   args: { id: v.id("looks") },
   handler: async (ctx, { id }) => {
     await requireMember(ctx);
-    await ctx.db.patch(id, { status: "pending", error: undefined, result: undefined });
+    await ctx.db.patch(id, { status: "pending", error: undefined, result: undefined, trace: undefined });
     await ctx.scheduler.runAfter(0, internal.stylist.wake, {});
   },
 });

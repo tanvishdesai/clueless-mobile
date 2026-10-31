@@ -119,6 +119,8 @@ export default defineSchema({
     result: v.optional(lookbook),
     favorite: v.optional(v.boolean()),
     model: v.optional(v.string()),
+    // The stylist's reasoning and searches, line by line, for the loading screen.
+    trace: v.optional(v.array(v.string())),
     startedAt: v.optional(v.number()),
     finishedAt: v.optional(v.number()),
   }).index("by_status", ["status"]),

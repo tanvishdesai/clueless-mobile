@@ -95,6 +95,16 @@ describe("the stylist worker needs the closet key", () => {
     await asOwner.mutation(api.looks.request, brief);
     expect(await t.query(api.looks.pending, { key: "s3cret" })).toHaveLength(1);
   });
+
+  test("only the worker writes the styling trace", async () => {
+    vi.stubEnv("CLOSET_KEY", "s3cret");
+    const { t, asOwner } = await closet();
+    const id = await asOwner.mutation(api.looks.request, brief);
+    await t.mutation(api.looks.claim, { id, model: "m", key: "s3cret" });
+    await expect(asOwner.mutation(api.looks.trace, { id, lines: ["hi"] })).rejects.toThrow(/Wrong closet key/);
+    await t.mutation(api.looks.trace, { id, lines: ["Checking the forecast"], key: "s3cret" });
+    expect((await asOwner.query(api.looks.get, { id }))?.trace).toEqual(["Checking the forecast"]);
+  });
 });
 
 describe("the closet itself: a member or the key", () => {

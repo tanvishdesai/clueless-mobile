@@ -50,6 +50,13 @@ async function style(req) {
   const cat = catalogue(items);
   if (!cat.refToId.size) throw new Error("the closet is empty - ingest some clothes first");
 
+  // Its reasoning and searches go to the loading screen as they happen. Fire and
+  // forget, chained so lines land in order; a dropped line is no reason to fail.
+  let sent = Promise.resolve();
+  const say = (lines) => {
+    if (lines.length) sent = sent.then(() => convex.mutation(anyApi.looks.trace, { id: req._id, lines, key: KEY })).catch(() => {});
+  };
+
   let output;
   for await (const m of query({
     prompt: brief(req, cat),
@@ -61,17 +68,21 @@ async function style(req) {
       tools: ["WebSearch"],
       allowedTools: ["WebSearch"],
       outputFormat: { type: "json_schema", schema: schema([...cat.refToId.keys()]) },
+      // Summarized, not omitted, so there is reasoning to show while it works.
+      thinking: { type: "adaptive", display: "summarized" },
       maxTurns: 8,
       settingSources: [],
       persistSession: false,
       env: { ...process.env, CLAUDE_CODE_OAUTH_TOKEN: TOKEN },
     },
   })) {
+    if (m.type === "assistant") say(m.message.content.flatMap(traceLines));
     if (m.type === "result") {
       if (m.is_error) throw new Error(`agent: ${m.subtype} ${JSON.stringify(m.result ?? "").slice(0, 200)}`);
       output = m.structured_output ?? parseLoose(m.result);
     }
   }
+  await sent;
   if (!output) throw new Error("no lookbook in the reply");
   return resolve(output, cat);
 }
@@ -105,6 +116,15 @@ async function reply(noteId) {
     }
   }
   return resolveNote(output, cat);
+}
+
+const sentences = new Intl.Segmenter("en", { granularity: "sentence" });
+
+/** A thinking block becomes its sentences; a search becomes "Searching: …". */
+function traceLines(block) {
+  if (block.type === "thinking") return [...sentences.segment(block.thinking)].map((s) => s.segment.trim()).filter(Boolean);
+  if (block.type === "tool_use" && block.name === "WebSearch") return [`Searching: ${block.input?.query ?? ""}`];
+  return [];
 }
 
 function parseLoose(text) {

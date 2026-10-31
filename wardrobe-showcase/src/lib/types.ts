@@ -70,6 +70,7 @@ export type LookRequest = {
   result?: Lookbook;
   favorite?: boolean;
   model?: string;
+  trace?: string[];
   startedAt?: number;
   finishedAt?: number;
 };

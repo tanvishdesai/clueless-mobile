@@ -124,7 +124,16 @@ function Styling({ req }: { req: LookRequest }) {
     return () => clearInterval(timer);
   }, []);
   const offline = mode === "live" && stylist && !stylist.online;
-  const line = LINES[Math.floor(t / 3) % LINES.length];
+  // The stylist's own reasoning and searches, one line every 2.5s: a thinking
+  // block lands as a dozen sentences at once, and jumping to the last would skip them.
+  const trace = req.trace ?? [];
+  const [shown, setShown] = useState(0);
+  useEffect(() => {
+    if (shown >= trace.length) return;
+    const timer = setTimeout(() => setShown(shown + 1), shown ? 2500 : 0);
+    return () => clearTimeout(timer);
+  }, [shown, trace.length]);
+  const line = shown ? trace[shown - 1] : LINES[Math.floor(t / 3) % LINES.length];
   return (
     <div className="styling">
       <div className="hanger-parade" aria-hidden>
